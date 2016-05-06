@@ -40,7 +40,7 @@ def main():
         sys.exit(0)
 
     if   PDFset[:2] == 'CT':
-        pdfsetdir = '../CT10'
+        pdfsetdir = '../%s' % PDFset[:4]
     elif PDFset[:2] == 'MS':
         pdfsetdir = '../MSTW'
     elif PDFset[:2] == 'NN':
