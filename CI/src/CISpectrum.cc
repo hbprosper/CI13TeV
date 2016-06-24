@@ -92,7 +92,7 @@ CISpectrum::CISpectrum(const char* _name, const char* _title,
 
   CISpectrum::histid++;
   char namen[80];
-  sprintf(namen, "hCI%4.4d", CISpectrum::histid);
+  sprintf(namen, "hCI%5.5d", CISpectrum::histid);
   
   xsec = new TH1D(namen, "", pt.size() - 1, &pt[0]);
   xsec->SetTitle(title.c_str());

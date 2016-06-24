@@ -3,6 +3,8 @@
 // apply jet response function.
 // HBP 2012 - 2014
 // Updated: 11-October-2014 HBP - add non-perturbative correction
+//          18-Jun-2016 HBP update NP corrections and smearing (SMP-15-007)
+//          23-Jun-2016 HBP use JECUncertainty 
 // ---------------------------------------------------------------------------
 #include <vector>
 #include <string>
@@ -22,7 +24,7 @@
 
 #include "JetSpectrumSmeared.h"
 #include "JetSpectrum.h"
-#include "JetCorrectionUncertainty.h"
+#include "JECUncertainty.h"
 // ---------------------------------------------------------------------------
 using namespace std;
 using namespace ROOT::Math;
@@ -33,7 +35,7 @@ const double RELTOL=1.e-5;
 // Inclusive jet spectrum in |y| < 0.5
 //----------------------------------------------------------------------------
 JetSpectrumSmeared::JetSpectrumSmeared(JetSpectrum* spectrum_,
-				       JetCorrectionUncertainty* JESunc_,
+				       JECUncertainty* JESunc_,
 				       double JERunc_,
 				       double x_, double y_,
 				       double pTmin_, double pTmax_,
@@ -134,20 +136,18 @@ double JetSpectrumSmeared::integrand_(double pT)
 // Jet response function
 double JetSpectrumSmeared::response(double pTreco, double pT)
 {
-  JESunc->setJetPt(pTreco);
-  JESunc->setJetEta(0.0);
-  double X = TMath::Max(1.e-3, 1.0 + x * JESunc->getUncertainty(false));
+  JECUncertainty& JECunc = *JESunc;
+  double X = TMath::Max(1.e-3, 1.0 + x * JECunc(pTreco, 0));
   double Y = TMath::Max(1.e-3, 1.0 + y * JERunc);
   return TMath::Gaus(pTreco/X, pT, Y*sigmapT(pT), kTRUE); 
 }
 
 double JetSpectrumSmeared::sigmapT(double pT)
 {    
-  // August 15, 2014, Sanmay Ganguly
-  // https://indico.cern.ch/event/335191/contribution/1/material/slides/0.pdf
-  double C = 0.029; //0.031;
-  double S = 0.984; //0.949;
-  double N = 5.7936;//6.130;
-  double CdataMC = 1.052;// 1.12;
-  return pT*CdataMC*sqrt(N*N/(pT*pT) + S*S/pT + C*C); 
+  // SMP-15-007-PreApproval.pdf
+  double a = 0.0257;
+  double b = 1.091;
+  double c = 0.5748;
+  double d =-0.002826;
+  return a + b / (pow(pT,c) + d*pT);
 }

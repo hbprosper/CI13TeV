@@ -42,10 +42,8 @@ RooInclusiveJetPdf::RooInclusiveJetPdf(const char *name, const char *title,
     xsection(vector<double>(_count.getSize(), 0)),
     firstbin(0),
     lastbin(_count.getSize()-1),
-    useLO(false),
     maxsize(0),
-    nbootstrap(1),
-    useinterpolation(false),
+    useinterpolation(false), // Set false initially to compute likelihood
     interp(0)
 {  
   count.add(_count);
@@ -68,9 +66,7 @@ RooInclusiveJetPdf::RooInclusiveJetPdf(const RooInclusiveJetPdf& other,
     xsection(other.xsection),
     firstbin(other.firstbin),
     lastbin(other.lastbin),
-    useLO(other.useLO),
     maxsize(other.maxsize),
-    nbootstrap(other.nbootstrap),
     useinterpolation(other.useinterpolation),
     interp(other.interp)
 {}
@@ -108,10 +104,6 @@ vector<double>& RooInclusiveJetPdf::crossSection(int c)
   for(int ii=0; ii < 6; ii++)
     k[ii] = dynamic_cast<RooRealVar*>(&kappa[ii])->getVal();
 
-  if ( useLO )
-    ci[c].set(-1);
-  else
-    ci[c].set(0);
   for(size_t ii=0; ii < xsection.size(); ii++)
     {
       qcdxsect[ii] = qcd[c](ii);
@@ -156,10 +148,7 @@ void RooInclusiveJetPdf::setAsimov(bool yes, double lumi, double l)
   for(size_t ii=0; ii < asimov.size(); ii++)
     {
       double xsec = qcd[0](ii);
-      if ( l > 0 )
-	{
-	  xsec += ci[0](l, k, ii);
-	}
+      if ( l > 0 ) xsec += ci[0](l, k, ii);
       asimov[ii] = scale * xsec;
     }
 }
@@ -169,7 +158,7 @@ void RooInclusiveJetPdf::setInterpolate(bool yes)
   useinterpolation = false;
   if ( ! yes ) return;
   
-  int npts=50;
+  int npts=100;
   vector<double> x(npts+1);
   vector<double> y(npts+1);
   double xmin = dynamic_cast<RooRealVar*>(&lambda)->getMin();
@@ -209,6 +198,7 @@ double RooInclusiveJetPdf::evaluate() const
   
   if ( useasimov )
     {
+      // use Asimov data
       int jj=0;
       for(int ii=firstbin; ii <= lastbin; ii++)
 	{
@@ -218,6 +208,7 @@ double RooInclusiveJetPdf::evaluate() const
     }
   else
     {
+      // use real data
       int jj = 0;
       for(int ii=firstbin; ii <= lastbin; ii++)
 	{
@@ -228,11 +219,6 @@ double RooInclusiveJetPdf::evaluate() const
 
   if ( number > -1 )
     {
-      // if ( useLO )
-      // 	ci[number].set(-1);
-      // else
-      // 	ci[number].set(0);
-      
       int jj = 0;
       for(int ii=firstbin; ii <= lastbin; ii++)
 	{
@@ -245,29 +231,17 @@ double RooInclusiveJetPdf::evaluate() const
     {
       // Note: the first element is presumed to be the
       // nominal cross section so we skip it.
-      // nbootstrap is the number of bootstrap samples
-      for(int B=0; B < nbootstrap; B++)
+      for(int c=1; c < maxsize; c++)
 	{
-	  for(int kk=1; kk < maxsize; kk++)
+	  int jj=0;
+	  for(int ii=firstbin; ii <= lastbin; ii++)
 	    {
-	      int c = kk;
-	      if ( nbootstrap > 1 ) c = rand3.Integer(maxsize-2)+1;
-	      
-	      // if ( useLO )
-	      // 	ci[c].set(-1);
-	      // else
-	      // 	ci[c].set(0);
-      
-	      int jj=0;
-	      for(int ii=firstbin; ii <= lastbin; ii++)
-		{
-		  p[jj] = qcd[c](ii) + ci[c](l, k, ii);
-		  jj++;
-		}
-	      y += RooInclusiveJetPdf::multinomial(n, p);
+	      p[jj] = qcd[c](ii) + ci[c](l, k, ii);
+	      jj++;
 	    }
+	  y += RooInclusiveJetPdf::multinomial(n, p);
 	}
-      y /= (maxsize * nbootstrap);
+      y /= maxsize;
     }
   if ( y != y || y <= 0 ) 
     return 0;

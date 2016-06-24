@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 // file: JetSpectrumSmeared.h
 // HBP 2012 - 2014
+// Updated: 23-Jun-2016 HBP use JECUncertainty 
 // ---------------------------------------------------------------------------
 #include <vector>
 #include <string>
@@ -18,7 +19,7 @@
 // Inclusive jet spectrum in |y| < 0.5
 // --------------------------------------------------------------------------
 class JetSpectrum;
-class JetCorrectionUncertainty;
+class JECUncertainty;
 
 class JetSpectrumSmeared
 {
@@ -26,7 +27,7 @@ class JetSpectrumSmeared
   JetSpectrumSmeared() {}
 
   JetSpectrumSmeared(JetSpectrum* spectrum_,
-		     JetCorrectionUncertainty* JESunc_=0,
+		     JECUncertainty* JESunc_=0,
 		     double JERunc_=0.1,
 		     double x_=0, double y_=0,
 		     double pTmin_=500.0,
@@ -45,7 +46,7 @@ class JetSpectrumSmeared
 
 private:
   JetSpectrum* spectrum;
-  JetCorrectionUncertainty* JESunc;
+  JECUncertainty* JESunc;
   double JERunc;
   double x, y;
   double pTmin, pTmax;

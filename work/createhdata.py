@@ -56,6 +56,8 @@ def main():
     # ---------------------------------------------------------------
     # Make and plot histogram
     # ---------------------------------------------------------------
+    L = 71.52 # 1/pb
+
     setStyle() 
     hfile = TFile(OUTFILENAME, 'recreate')
 
@@ -81,10 +83,35 @@ def main():
     gPad.SetLogy()
     hdata.Draw('ep')
 
-    scribe = addTitle('CMS Preliminary  #surds=13TeV CI Search L=71.52 pb^{-1}',
+    scribe = addTitle('CMS Preliminary  '\
+                      '#surds=13TeV L=%5.2fpb^{-1}' % L ,
                       0.035)
     cdata.Update()
-    cdata.SaveAs('.pdf')
+    cdata.SaveAs('.png')
+
+
+    # now divide by bin width
+    hfile.cd()
+    hdata2 = hdata.Clone('hdata2')
+    gSystem.Load('libCI.so')
+    
+    hutil.divideByWidth(hdata2)
+    hdata2.Scale(1.0/L)
+    hdata2.SetMaximum(2.0)
+    hdata2.GetYaxis().SetTitle('d^{2}#sigma/dp_{T}dy (pb/GeV)')
+
+
+    cdata2 = TCanvas('figures/fig_%s2' % NAME, "observed", 520, 10, 500, 500)
+    cdata2.cd()
+    gPad.SetLogy()
+    hdata2.Draw('ep')
+
+    scribe2 = addTitle('CMS Preliminary  '\
+                       '#surds=13TeV L=%5.2fpb^{-1}' % L,
+                      0.035)
+    cdata2.Update()
+    cdata2.SaveAs('.png')
+    
     sleep(5)
     hfile.Write()
     hfile.Close()

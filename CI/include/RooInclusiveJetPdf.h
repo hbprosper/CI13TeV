@@ -52,11 +52,9 @@ public:
     int mxsize = qcd.size()-1;
     maxsize = n < 1 ? mxsize : n < mxsize ? n : mxsize;
   }
-  void setBootstrapSize(int n=1) { nbootstrap = n; }
   void setNumber(int which=0);
   void setAsimov(bool yes=true, double lumi=19.71, double l=0);
   void setInterpolate(bool yes=true);
-  void setLO(bool yes=true) { useLO = yes; }
   
   std::vector<double>& Asimov() { return asimov; }
   std::vector<double>& crossSection(int n);
@@ -85,9 +83,7 @@ public:
   std::vector<double> xsection;
   int firstbin;
   int lastbin;
-  bool useLO;
   int maxsize;
-  int nbootstrap;
   bool useinterpolation;
   mutable ROOT::Math::Interpolator* interp;
   

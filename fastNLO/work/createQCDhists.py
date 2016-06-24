@@ -16,13 +16,15 @@ LHAPATH = os.environ['LHAPDF_DATA_PATH']
 YMIN    = 1.0e-10
 YMAX    = 1.0e+8
 #-----------------------------------------------------------------------------
-def getBins():    
-    dirname = '../CT10/001'
-    txtfilenames = glob('%s/*.txt' % dirname)
+def getBins(dirname):
+    cmd = '%s/*.txt' % dirname
+    txtfilenames = glob(cmd)
+    if len(txtfilenames) == 0:
+        sys.exit("\n** can't get text files: %s" % cmd)
     txtfilenames.sort()
     filename = txtfilenames[0]
-    records = map(lambda x: map(atof, x),
-                  map(split, open(filename).readlines()[1:]))
+    records  = map(lambda x: map(atof, x),
+                    map(split, open(filename).readlines()[1:]))
     pt = array('d')
     for ptlow, pthigh, lo, nlo in records: pt.append(ptlow)
     ptlow, pthigh, lo, nlo = records[-1]
@@ -42,7 +44,7 @@ def makeHist(txtfilename, pt, which=1):
     h = TH1D(hname, '', len(pt)-1, pt)
     h.GetXaxis().SetTitle('p_{T} (GeV)')
     h.SetNdivisions(504, "Y")
-    h.GetYaxis().SetTitle('d^{2}#sigma /dp_{T}|y| (pb/GeV)')
+    h.GetYaxis().SetTitle('d^{2}#sigma /dp_{T}y (pb/GeV)')
     h.SetMinimum(YMIN)
     h.SetMaximum(YMAX)
     h.SetLineWidth(1)
@@ -62,18 +64,25 @@ def main():
     argv = sys.argv[1:]
     argc = len(argv)
     if argc < 1:
+        records = map(lambda x: "\t%s\n" % strip(x),
+                      os.popen("ls -1 $LHAPDF_DATA_PATH").readlines())
+        record  = "%s%s%s" % (RED, joinfields(records), RESETCOLOR) 
         print '''
+Usage:
     ./createQCDhists.py PDFset [PDFindex=all]
-        '''
-        sys.exit(0)
+    
+    available PDFsets:
+%s
+        ''' % record
+        sys.exit(0)    
 
     PDFset = argv[0]
     if   PDFset[:2] == 'CT':
-        pdfsetdir = '../CT10'
-    elif PDFset[:2] == 'MS':
-        pdfsetdir = '../MSTW'
+        pdfsetdir = '../CT14'
+    elif PDFset[:2] == 'MM':
+        pdfsetdir = '../MMHT2014'
     elif PDFset[:2] == 'NN':
-        pdfsetdir = '../NNPDF'
+        pdfsetdir = '../NNPDF30'
     else:
         print "wrong PDFset %s" % PDFset
         sys.exit(0)
@@ -83,14 +92,19 @@ def main():
         PDFindexMax = PDFindexMin
     else:
         PDFindexMin =   0
-        PDFindexMax = 500
+        cmd  = 'ls -1 %s' % pdfsetdir
+        recs = os.popen(cmd).readlines()
+        PDFindexMax = len(recs)-1
 
     print
     print "\t==> PDFset:            %s" % PDFset
     print "\t==> PDFset index(min): %d" % PDFindexMin
     print "\t==> PDFset index(max): %d" % PDFindexMax
 
-    pt = getBins()
+    dirname = '%s/000' % pdfsetdir
+    pt = getBins(dirname)
+
+    # loop over 
     hfile = []
     for index in xrange(PDFindexMin, PDFindexMax+1):
         dirname = '%s/%3.3d' % (pdfsetdir, index)

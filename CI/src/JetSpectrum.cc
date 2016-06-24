@@ -88,10 +88,10 @@ JetSpectrum::JetSpectrum(string filename,
 
 double JetSpectrum::NPC(double pt)
 {
-  // from Sanmay Ganguly (Nov. 2014)
-  double A =  1.003; // +/-  0.27   (old = 1.003)
-  double B = 77.374; // +/-295.0    (old = 46.774)
-  double n =  1.385; // +/-  8.5    (old = 1.253)
+  // from Paolo Gunnellini (2015-12-17)
+  double A =   1.00139;
+  double B = 433.922;
+  double n =   1.67615;
   return A + B/pow(pt, n);
 }
 

@@ -21,12 +21,11 @@ $(shell mkdir -p lib)
 ifdef verbose
 AT 	:=
 else
+
 AT	:= @
 endif
 
-srcs	:= 	$(srcdir)/JetCorrectionUncertainty.cc \
-		$(srcdir)/JetCorrectorParameters.cc \
-		$(srcdir)/SimpleJetCorrectionUncertainty.cc \
+srcs	:= 	$(srcdir)/JECUncertainty.cc \
 		$(srcdir)/CIXsection.cc \
 		$(srcdir)/CISpectrum.cc \
 		$(srcdir)/QCDSpectrum.cc \
@@ -56,8 +55,16 @@ sharedlib := $(libdir)/lib$(name).so
 #-----------------------------------------------------------------------
 # 	Define which compilers and linkers to use
 
-# 	C++ Compiler
-CXX	:= clang++
+# check for clang++, otherwise use g++
+COMPILER        := $(shell which clang++ >& $(HOME)/.cxx; tail $(HOME)/.cxx)
+COMPILER        := $(shell basename "$(COMPILER)")
+ifeq ($(COMPILER),clang++)
+CXX             := clang++
+LD              := clang++
+else
+CXX             := g++
+LD              := g++
+endif
 
 CINT    := rootcint
 
@@ -110,6 +117,7 @@ lib:	$(sharedlib)
 # list of targets : target pattern : source pattern
 
 $(sharedlib)	: $(objects)
+	@echo ""
 	@echo "---> Linking `basename $@`"
 	$(AT)$(LDSHARED) $(LDFLAGS) -fPIC $(objects) $(LIBS) -o $@
 
@@ -121,6 +129,7 @@ $(objects)	: %.o	: %.cc
 $(dictsrcs)	: $(srcdir)/%_dict.cc : $(incdir)/%.h
 	@echo "---> Building dictionary from `basename $^`" 
 	$(AT)$(CINT) -f $@ -c $^
+	$(AT)find $(srcdir) -name "*.pcm" -exec mv {} $(libdir) \;
 
 # 	Define clean up rules
 clean   :

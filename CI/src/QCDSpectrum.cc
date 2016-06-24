@@ -47,7 +47,7 @@ QCDSpectrum::QCDSpectrum(const  char* _name, const char* _title,
 
   QCDSpectrum::histid++;
   char namen[80];
-  sprintf(namen, "hQCD%4.4d", QCDSpectrum::histid);
+  sprintf(namen, "hQCD%5.5d", QCDSpectrum::histid);
   
   xsec = new TH1D(namen, "", pt.size() - 1, &pt[0]);
   xsec->SetTitle(title.c_str());
