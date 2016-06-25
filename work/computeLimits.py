@@ -15,8 +15,12 @@ from histutil import *
 from string import *
 from ROOT import *
 #-----------------------------------------------------------------
+EXPECTED = True   # expected limits
+LUMI     = 71.5   # 1/pb
 WSPACE   = 'CI'
 DEBUG    = 0
+
+# Models
 #                        kappa
 #                   0   1   2   3   4   5
 KAPPA   = {'LL' : [-1,  0,  0,  0,  0,  0],
@@ -46,9 +50,6 @@ def makePlot(ws, likelihood, q,
     ytitle = likelihood.GetTitle()
     xstep  = (xmax-xmin)/xbins
 
-    ## h = mkhist1(hname, xtitle, 'p(D | #lambda )',
-    ##             xbins, xmin, xmax,
-    ##             color=color, lstyle=lstyle)
     h = TH1D(hname, "", xbins, xmin, xmax)
 
     h.SetLineColor(color)
@@ -135,10 +136,8 @@ def main():
     else:
         models = MODEL
 
-    # Run II
-    L      = 0.07152 # 1/fb
     energy ='13'
-    lumi   = '%5.2f' % L
+    lumi   = '%5.2f' % LUMI
         
     prefix = nameonly(filename)
     dname  = split(prefix, '_')[0]
@@ -165,21 +164,19 @@ def main():
     pdf   = PDFWrapper(model, Nset, poi)
 
     CL = 0.95
-    model.setAsimov(True, L)
-    model.setBinRange(0)
-    ntrials = 5
-    step    = 100
+    model.setAsimov(EXPECTED, LUMI)
+    model.setBinRange(0, nbins-1)
     for key in models:
         
         for sign in [1, -1]:
             if sign > 0:
                 name = '%s_positive' % key
-                fname = 'figs/%s/%s_likelihood_%s' % (dname, prefix, name)
+                fname = 'figures/%s/%s_likelihood_%s' % (dname, prefix, name)
                 clike1 = TCanvas(fname, fname, 10, 10, 500, 500)
                 clike = clike1
             else:
                 name = '%s_negative' % key
-                fname = 'figs/%s/%s_likelihood_%s' % (dname, prefix, name)
+                fname = 'figures/%s/%s_likelihood_%s' % (dname, prefix, name)
                 clike2 = TCanvas(fname, fname, 515, 10, 500, 500)
                 clike = clike2
 
@@ -219,52 +216,44 @@ def main():
             clike.Update()
 
             # --------------------------------------
-            # compute limits with systematic uncertainties
+            # compute limits with systematic
+            # Uncertainties
             # --------------------------------------
             model.setNumber(-1) # include systematic uncertainties            
-            Limit2 = []
             try:
-                for h in havg:
-                    del h
+                del havg
             except:
                 pass
-            havg = [None]*ntrials
-            colors = [kBlue, kGreen, kOrange+1, kMagenta, kRed]
-            for iii in xrange(ntrials):
-                size = (iii+1)*step
-                model.setSize(size)
-                lwidth = 1
-                if iii == ntrials-1: lwidth=3
-                havg[iii]=makePlot(ws, model, poi, "havg%3.3d" % iii,
-                                   color=colors[iii],
-                                   lstyle=1,
-                                   lwidth=lwidth)
-                clike.cd()
-                havg[iii].Draw('l same')            
-                clike.Update()
-                bayes.normalize()
-                limit= bayes.quantile(CL)
-                if limit > 0:
-                    Limit2.append(1.0/sqrt(limit))
-                    print "\tLambda > %8.1f TeV @ %3.1f%s CL (all uncert.)" % \
-                    (Limit2[-1], 100*CL, '%'), size
+
+            havg = makePlot(ws, model, poi, "havg",
+                            color=lRed,
+                            lstyle=1,
+                            lwidth=2)
+            clike.cd()
+            havg.Draw('l same')
+            clike.Update()
+
+            bayes.normalize()
+            limit = bayes.quantile(CL)
+            if limit > 0:
+                Limit2 = 1.0/sqrt(limit)
+                print "\tLambda > %8.1f TeV @ %3.1f%s CL (all uncert.)" % \
+                    (Limit2, 100*CL, '%')
                     print "\t\t\t==> real time: %8.3f s " % swatch.RealTime()
             # --------------------------------------
             # plot posterior density and limits
             # --------------------------------------
             clike.cd()
             scribe = addTitle('CMS Preliminary  '\
-                              '#surds=%sTeV CI Search L=%s/fb' % \
+                              '#surds=%sTeV  L=%s/fb' % \
                               (energy, lumi),
                               0.035)
             scribe.vspace()
-            for iii in xrange(ntrials):
-                size = (iii+1)*step
-                scribe.write("%s(#kappa=%s) #Lambda > %3.1fTeV (%d)" % \
-                            (key, kappa, Limit2[iii], size), 0.04)
+            scribe.write("%s(#kappa=%s) #Lambda > %3.1fTeV" % \
+                         (key, kappa, Limit2), 0.04)
                             
             clike.Update()
-            clike.SaveAs('.pdf')
+            clike.SaveAs('.png')
             
         sleep(5)
     #gApplication.Run()

@@ -10,11 +10,7 @@ from histutil import *
 from string import *
 from array import array
 from time import sleep
-from ROOT import gSystem, gPad, \
-     kFALSE, kTRUE, \
-     kBlack, kYellow, kGreen, kRed, kBlue, kOrange, kMagenta, \
-     TFile, TCanvas, TGraph, \
-     vector
+from ROOT import *
 #-----------------------------------------------------------------------------
 gSystem.Load("libCI.so")
 from ROOT import hutil
@@ -31,19 +27,17 @@ KAPPA   = {'LL' : [-1,  0,  0,  0,  0,  0],
            'V-A': [ 0,  0, -2,  0,  0,  0]}
 MODEL   = ['LL', 'RR', 'VV', 'AA', 'V-A']
 
+LUMI    = 71.5  # 1/pb
+
 class Context:
     pass    
 #-----------------------------------------------------------------------------
-LUMI = {'7':  5000.0,
-        '8': 19710.0} # 1/pb
-
 getpdfdir   = re.compile('(?<=fastNLO/).+(?=/[0-9])|(?<=fastCI/).+(?=/[0-9])')
 getsmearing = re.compile('(?<=/[0-9][0-9][0-9]/).+')
-PDFS = {'ALL'  : 'CT10nlo, MSTW2008nlo, NNPDF23_nlo',
-        'CT10' : 'CT10nlo',
-        'CTEQ6.6': 'CTEQ6.6',
-        'MSTW' : 'MSTW2008nlo',
-        'NNPDF': 'NNPDF23_nlo'}
+PDFS = {'ALL'  : 'CT14, MMHT2014, NNPDF30',
+        'CT14' : 'CT14',
+        'MMHT' : 'MMHT2014',
+        'NNPDF': 'NNPDF30'}
 #-----------------------------------------------------------------    
 def check(o, message):
     if o == None:
@@ -55,7 +49,7 @@ def waitForKey(message):
     raw_input("")
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
-    VERSION = '05-Feb-2015'
+    VERSION = '24-Jun-2016'
     USAGE = '''
     python plotWorkspace.py [options] <workspace-file>
 
@@ -94,13 +88,13 @@ def decodeCommandLine():
     model = upper(options.model)
     if model[0] == '-':
         model = model[1:]
-        key = model
-        sign=-1
-        interf = 'd'
+        key   = model
+        sign  =-1
+        interf= 'd'
     else:
-        key = model
-        sign= 1
-        interf = 'c'
+        key   = model
+        sign  = 1
+        interf= 'c'
     if KAPPA.has_key(key):
         for ii in xrange(kappa.size()):
             kappa[ii] = sign*KAPPA[key][ii]
@@ -114,7 +108,6 @@ def makePlot(context):
     interf   = context.interf
     hdata    = context.hdata
     pT       = context.pT
-    is7TeV   = context.is7TeV
     
     qcdspectrum = context.qcdspectrum
     cispectrum  = context.cispectrum
@@ -126,25 +119,21 @@ def makePlot(context):
     pTmax = pT[-1]
     nbins = hdata.GetNbinsX()
     # --------------------------------------------------------
-    if is7TeV:
-        smearing = ''
-        pdfdir   = 'CTEQ6.6'
-    else:
-        smearing = getsmearing.findall(qcdspectrum[0].dirname())[0]
-        pdfdir   = getpdfdir.findall(qcdspectrum[0].dirname())[0]
+    smearing = getsmearing.findall(qcdspectrum[0].dirname())[0]
+    dirname  = split(context.filename, '_')[0]
 
     if   smearing == 'NONE':
         label = 'no smearing'
         postfix = '_NONE'
     elif smearing == 'JESJER':
         label  = 'JES+JER uncert.'
-        postfix= '_JES_JER'         
+        postfix= '_JESJER'         
     elif smearing == 'PDF':
         label  = 'PDF uncert.'
         postfix= '_PDF'
     else:
         label  = 'JES+JER+PDF uncert.'
-        postfix= '_JES_JER_PDF'
+        postfix= '_JESJERPDF'
     
     # --------------------------------------------------------
     print "="*80
@@ -173,16 +162,16 @@ def makePlot(context):
             pcQCDCI.add(hci)
             hQCDCI.append(hci)
 
-        if index % 100 == 0:
-            print "%4d" % index, hqcd.GetName()
+        if index % 1000 == 0:
+            print "%5d" % index, hqcd.GetName()
     
     # --------------------------------------------------------
     # plot spectrum
     # --------------------------------------------------------
-    os.system('mkdir -p figs/%s' % pdfdir)
+    os.system('mkdir -p figures/%s' % dirname)
     
-    name = 'figs/%s/%s_d2sigma_dpTdy%s' % (pdfdir,
-                                           pdfdir, postfix)
+    name = 'figures/%s/%s_d2sigma_dpTdy%s' % (dirname,
+                                              dirname, postfix)
     cspect = TCanvas(name, name, 10, 10, 500, 500)
     x = map(lambda i: (pT[i+1]+pT[i])/2, range(nbins))
 
@@ -198,15 +187,11 @@ def makePlot(context):
     hqcdnom = qcdspectrum[0]()
     hutil.divideByWidth(hqcdnom) # convert to a density
     hqcdnom.SetLineColor(kBlue)            
-           
-    # hack to rescale 7TeV spectrum
-    if is7TeV:
-        hdata.Scale(hqcdnom.Integral() / hdata.Integral())
                 
     xdata = hdata.Integral()
     xsect = hqcdnom.Integral()
     scale = xdata / xsect
-    print "\n\t==> data/theory: %10.3f\n" % scale
+    print "\n==> data/theory: %10.3f\n" % scale
     
     # compute percentile spectra
     curve = []
@@ -235,21 +220,21 @@ def makePlot(context):
 
     energy = context.energy
     lumi   = context.lumi
-    scribe = addTitle('CMS Preliminary  #surds=%sTeV CI Search L=%s/fb' % \
+    scribe = addTitle('CMS Preliminary  #surds=%sTeV L=%s/pb' % \
                       (energy, lumi),
                       0.035)
     scribe.vspace()
     if addCI:
         scribe.write("%s(#Lambda = %3.1f TeV) %s" % (model,
-                                                   Lambda,
-                                                   interf), 0.05)
-    scribe.write(PDFS[pdfdir], 0.07)
+                                                     Lambda,
+                                                     interf), 0.05)
+    scribe.write(PDFS[dirname], 0.07)
     scribe.write(label, 0.11)
 
     xp = 0.70
     yp = 0.68
-    xw = 0.16
-    yw = 0.22
+    xw = 0.18
+    yw = 0.24
     lg = mklegend(xp, yp, xw, yw)
     lg.AddEntry(hdata, 'data', 'p')
     lg.AddEntry(hqcdnom, 'QCD', 'l')
@@ -259,15 +244,14 @@ def makePlot(context):
     lg.Draw('same')
     
     cspect.Update()
-    cspect.SaveAs('.pdf')
+    cspect.SaveAs('.png')
 
     # --------------------------------------------------------
     # now plot the ratio
     # --------------------------------------------------------
-
-    cratio = TCanvas('figs/%s/%s_data_over_theory%s' % (pdfdir,
-                                                        pdfdir, postfix),
-                     '%s - spectrum-ratio' % pdfdir,
+    cratio = TCanvas('figures/%s/%s_data_over_theory%s' % (dirname,
+                                                           dirname, postfix),
+                     '%s - spectrum-ratio' % dirname,
                      515, 10, 500, 500)
    
     hqcdnom.Scale(scale)
@@ -276,7 +260,7 @@ def makePlot(context):
     hratio.SetMinimum(0.0)
     hratio.SetMaximum(3.0)
 
-    title = 'data / QCD_{NLO} #otimes NP #otimes EWK'
+    title = 'data / QCD_{NLO}#otimesNP#otimesEWK'
     hratio.GetYaxis().SetTitle(title)
 
     cratio.cd()
@@ -289,15 +273,7 @@ def makePlot(context):
     for ii, h in enumerate(hist):
         h.Divide(hqcdnom)
         pc.add(h)
-        if ii % 10 == 0:
-            jj += 1
-            cratio.cd()
-            h.SetLineWidth(1)
-            h.SetLineColor(color[jj%5])
-            h.Draw('c same')
-            cratio.Update()
-    #gApplication.Run()
-    
+
     curve = []
     for p in PERCENT: curve.append( pc(p) )
     p95r = mkpline(x, curve[0], curve[-1], hratio, color=kGreen)
@@ -325,7 +301,7 @@ def makePlot(context):
     qcdr.Draw('c same')
     hratio.Draw("ep same")
     
-    scriber = addTitle('CMS Preliminary  #surds=%sTeV CI Search L=%s/fb' % \
+    scriber = addTitle('CMS Preliminary  #surds=%sTeV L=%s/pb' % \
                        (energy, lumi),
                        0.035)
     scriber.vspace()
@@ -333,7 +309,7 @@ def makePlot(context):
         scriber.write("%s(#Lambda=%3.1f TeV) %s" % (model,
                                                     Lambda,
                                                     interf), 0.04)
-    scriber.write(PDFS[pdfdir], 0.04)
+    scriber.write(PDFS[dirname], 0.04)
     scriber.write(label, 0.04)
 
     lg = mklegend(xp, yp, xw, yw)
@@ -345,7 +321,7 @@ def makePlot(context):
     lg.Draw('same')
     
     cratio.Update()
-    cratio.SaveAs('.pdf')    
+    cratio.SaveAs('.png')    
 
     sleep(10)           
 #-----------------------------------------------------------------------------
@@ -356,16 +332,11 @@ def main():
     filename, Lambda, kappa, model, interf = decodeCommandLine()
 
     context = Context()
-    context.is7TeV = filename[:5] == 'CTEQ6'
+    context.filename = filename
     context.Lambda = Lambda
     context.kappa  = kappa
-    
-    if context.is7TeV:
-        context.energy = '7'
-        context.lumi   = '5.0'
-    else:
-        context.energy = '8'
-        context.lumi   = '19.7'
+    context.energy = '13'
+    context.lumi   = '%5.2f' % LUMI
         
     # --------------------------------------------------------        
     print "\nloading workspace..."
@@ -388,7 +359,7 @@ def main():
     hdata.SetMarkerSize(0.8)
     hdata.SetMarkerStyle(20)
     hutil.divideByWidth(hdata)
-    hdata.Scale(1.0/LUMI[context.energy])
+    hdata.Scale(1.0/LUMI)
     pT = hutil.binlowedges(hdata)
     pT.push_back(pT[-1]+hdata.GetBinWidth(nbins))
 
@@ -409,7 +380,7 @@ def main():
             if ci == None: break
             cispectrum.append(ci)
 
-        if ii % 100 == 0:
+        if ii % 1000 == 0:
             print "%4d %s %s" % (ii, qcd.dirname(), qcd.histname())
 
     # --------------------------------------------------------

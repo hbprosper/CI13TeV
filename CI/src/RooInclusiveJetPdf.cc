@@ -143,8 +143,8 @@ void RooInclusiveJetPdf::setAsimov(bool yes, double lumi, double l)
       k[c] = dynamic_cast<RooRealVar*>(&kappa[c])->getVal();
   
   // Note: the first element is presumed to be the
-  // nominal cross section.
-  double scale = 1000*lumi;
+  // nominal cross section (in pb)
+  double scale = lumi;
   for(size_t ii=0; ii < asimov.size(); ii++)
     {
       double xsec = qcd[0](ii);

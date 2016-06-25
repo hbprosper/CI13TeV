@@ -55,6 +55,8 @@ public:
   void setNumber(int which=0);
   void setAsimov(bool yes=true, double lumi=19.71, double l=0);
   void setInterpolate(bool yes=true);
+
+  int  numberOfBins() { return count.getSize(); }
   
   std::vector<double>& Asimov() { return asimov; }
   std::vector<double>& crossSection(int n);

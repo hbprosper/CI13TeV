@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #-----------------------------------------------------------------------------
-# loadSpectra.py
-# read spectra and cache them in a simple server
+# File: createWorkspace.py
 # created 12-Oct-2014 Harrison B. Prosper - a rewrite
 #         08-Feb-2015 HBP - add nominal QCD spectrum, that is, the
 #                     spectrum computed with PDF member zero
@@ -19,22 +18,21 @@ from ROOT import gSystem, TFile, kFALSE, kTRUE, \
      RooWorkspace, RooMsgService, RooFit, RooDataSet, RooCmdArg
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
-DATAFILE= '../data/data_8TeV_L19.71_V8.root'
-PDFDIR  = 'CT10'
+DATAFILE= '../data/data_13TeV_L000.07152ifb.root'
+PDFDIR  = 'CT14'
+NDIRS   = 200
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
     VERSION = '16-May-2016'
     USAGE = '''
-    python createWorkspace.py [options] <PDF sets>
+    python createWorkspace.py [options] [PDF sets=CT14 NNPDF MMHT]
 
     options
        -s<smearing>  jes+jer+pdf, jes+jer, pdf [def.=jes+jer+pdf]
-       -o<root-filename>                       [def.=<PDF>_<s>_workspace.root]
-       -n<number of spectra>                   [def.=10000]
-
-    Notes:
-       -n this is the number of spectra to use in bootstrap integration.
-    '''
+       -o<root filename>                       [def.=<PDF>_<s>_workspace.root]
+       -n<number of directories>               [def.=%d]
+       -h (help)
+    ''' % NDIRS
     parser = optparse.OptionParser(usage=USAGE,
                                    version=VERSION)
     parser.add_option('-s', '--smearing',
@@ -55,15 +53,13 @@ def decodeCommandLine():
                       action='store',
                       dest='nspectra',
                       type='int',
-                      default=10000,
+                      default=NDIRS,
                       help='number of randomly sampled spectra to use'\
-                      ' MC bootstrap integration ')    
-            
-    options, args = parser.parse_args()
-    if len(args) == 0:
-        print USAGE
-        sys.exit(0)
-    PDFsets = args
+                      ' MC bootstrap integration ')
+                                  
+    options, PDFsets = parser.parse_args()
+    if len(PDFsets) == 0:
+        PDFsets = ['CT14', 'MMHT', 'NNPDF']
 
     # create directory name to contain smeared spectra
     directory = upper(replace(options.smearing, '+', ''))
@@ -82,7 +78,10 @@ def decodeCommandLine():
 def main():
     print "\n\t\t\t=== createWorkspace.py ==="
     
-    dirname, PDFsets, filename, nspectra = decodeCommandLine()
+    dirname, PDFsets, wfilename, ndirs = decodeCommandLine()
+    
+    print
+    print dirname, PDFsets, wfilename, ndirs
 
     gSystem.Load("libCI")
     from ROOT import hutil, QCDSpectrum, CIXsection, CISpectrum, \
@@ -91,10 +90,12 @@ def main():
     # -------------------------------------
     # determine which files to use
     # -------------------------------------
-    if   dirname == 'JESJER':
-        member = '000'
+    if dirname == 'JESJER':
+        first = 0
+        ndirs = 1
     else:
-        member = '*'
+        first = 1
+        ndirs+= 1
 
     # -------------------------------------
     # create a random (bootstrap) sample
@@ -117,13 +118,17 @@ def main():
                     "can't open rootfile %s" % rootfile)
     histnames = hutil.histogramNames(hfile)
     hfile.Close()
-
+    for ii, histname in enumerate(histnames):
+        print "%2d\t%s" % (ii+1, histname)
+        
     # get list of QCD directories containing spectra
     QCDdirs = []
     for pdfset in PDFsets:
-        QCDdirs += glob('../fastNLO/%s/%s/%s' % (pdfset, member, dirname))
+        for member in xrange(first, ndirs):
+            filename = '../fastNLO/%s/%3.3d/%s' % (pdfset, member, dirname)
+            QCDdirs.append(filename)
     QCDdirs.sort()
-    
+
     # -------------------------------------                
     # make a sample of histograms in which
     # the renormalization and factorization
@@ -135,15 +140,14 @@ def main():
     # jet energy resolution.
     # -------------------------------------
     print
+    nspectra = len(QCDdirs)*len(histnames)
     print "==> create a bootstrap sample of %d spectra..." % nspectra
     spectra = [None]*nspectra
+    
     for jj in xrange(nspectra):
-        # randomly pick a PDF set
-        ii = randint(0, len(PDFsets)-1)
-        pdfset = PDFsets[ii]
 
         # randomly pick a PDF member from the PDF set
-        member = randint(1, len(QCDdirs)-1)        
+        member = randint(0, len(QCDdirs)-1)        
         qcddir = QCDdirs[member]
         
         # randomly pick a histogram (each corresponding
@@ -153,7 +157,7 @@ def main():
         histname = histnames[ii]
         spectra[jj] = (qcddir, histname)
 
-    # insert nominal QCD histogram for CTEQ with nominal
+    # insert nominal QCD histogram for CT14 with nominal
     # scales at position 0 in list of spectra
     qcddir = '../fastNLO/%s/000/%s' % (PDFDIR, dirname)
     fqcdnom = glob(qcddir)
@@ -167,9 +171,6 @@ def main():
 
     print "="*80
     print "==> number of spectra: %d" % len(spectra)
-    print "==> first spectrum:      ", spectra[0]
-    print "==> last  spectrum:      ", spectra[-1]
-    print "="*80
     
     # --------------------------------------
     # create RooFit workspace
@@ -235,7 +236,7 @@ def main():
                       ws.set('Nset'))
     data.add(ws.set('Nset'))
     getattr(ws, 'import')(data, RooCmdArg())
-    ws.Print()
+        
     # -------------------------------------            
     # finally, create probability model
     # -------------------------------------
@@ -245,8 +246,9 @@ def main():
                                ws.var('lambda'),
                                ws.set('kappaset'))
 
-    print "\t==> saving %d spectra to workspace..." % nspectra
-    hfile = TFile(filename, "recreate")
+    print "==> saving %d spectra to workspace %s" % (nspectra, wfilename)
+
+    hfile = TFile(wfilename, "recreate")
     qcdspectrum = []
     cispectrum  = []
     qcdrecords  = []
@@ -255,7 +257,7 @@ def main():
         # get CI directory associated with current QCD spectrum
         CIdir = replace(QCDdir, 'fastNLO', 'fastCI')
         if index % 500 == 0:
-            print "%4d" % index, QCDdir, histname
+            print "%5d %s\t%s" % (index, QCDdir, histname)
 
         name = "QCD%5.5d" % index
         qcdrecords.append(name)
@@ -272,9 +274,10 @@ def main():
     # -------------------------------------                
     print "="*80    
     ws.Print()
-    print "==> writing workspace to file: %s" % filename
+    print "="*80    
+    print "==> writing workspace to file: %s" % wfilename
     hfile.Close()
-    ws.writeToFile(filename, kFALSE)
+    ws.writeToFile(wfilename, kFALSE)
     print "\tdone!\n"    
 #-----------------------------------------------------------------------------
 try:
