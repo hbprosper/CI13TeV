@@ -5,6 +5,9 @@
 # (see 6-Sep-2013 presentation by Sanmay Ganguly to the Exotica Group) to the
 # specified true spectra 
 # created 09-Oct-2014 Harrison B. Prosper - a rewrite
+#         23-Jun-2016 HBP update to Run II
+#         14-Sep-2016 HBP change EWK correction histogram to histo.
+#                         also place correction files in data directory
 #-----------------------------------------------------------------------------
 import os, sys, re, optparse
 from math import *
@@ -30,15 +33,15 @@ nlo_2.000_1.000
 nlo_2.000_2.000
 '''
 HISTNAMES = split(strip(HISTNAMES))
-DATAFILENAME  = '../data/data_8TeV_L19.71_V8.root'
-JECUNFILENAME = '../corrections/Winter14_V5_DATA_UncertaintySources_AK7PF.txt'
-EWKFILENAME   = '../corrections/ElectroWeakCorrection.root'
-JECUNTOTAL    = 'TotalNoTime'
+DATAFILENAME  = '../data/data_13TeV_L000.07152ifb.root'
+JECUNFILENAME = '../data/Summer15_50nsV5_DATA_Uncertainty_AK8PF.root'
+EWKFILENAME   = '../data/ElectroWeakCorrection.root'
+EWKHISTNAME   = 'histo'
 #-----------------------------------------------------------------------------
 LUMI = 19710.0 # 1/pb
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
-    VERSION = '22-Nov-2014'
+    VERSION = '14-Sep-2016'
     USAGE = '''
     python smearSpectra.py [options] <pathname to unsmeared spectra>
 
@@ -87,10 +90,6 @@ def main():
     getPDFmember = re.compile(cmd)
 
     gSystem.Load("libCI.so")
-    from ROOT import JetCorrectorParameters
-    from ROOT import JetCorrectionUncertainty
-    from ROOT import JetSpectrum, JetSpectrumSmeared
-    from ROOT import hutil
           
     setStyle()
     
@@ -183,20 +182,23 @@ def main():
     # --------------------------------------------------------
     # get correction functions
     # --------------------------------------------------------
+    # get jet energy corrections
     if not os.path.exists(JECUNFILENAME):
         print "** can't open file %s" % JECUNFILENAME
         sys.exit(0)
-  
-    jetcor = JetCorrectorParameters(JECUNFILENAME, JECUNTOTAL)
-    JESunc = JetCorrectionUncertainty(jetcor)
+    JESunc = JECUncertainty(JECUNFILENAME)
     JERunc = 0.1 # assume a flat 10% uncertainty in JER
 
+    # get electroweak corrections
     if not os.path.exists(EWKFILENAME):
         print "** can't open file %s" % EWKFILENAME
         sys.exit(0)            
     fEWK = TFile(EWKFILENAME)
-    hEWK = fEWK.Get("IncJet_Ewk_Y0")
-    
+    hEWK = fEWK.Get(EWKHISTNAME)
+    if hEWK == None:
+        print "** can't get EWK histogram %s" % EWKHISTNAME
+
+    # turn on non-perturbative corrections
     doNPcor  = True  # non-perturbative corrections
     
     # --------------------------------------------------------
@@ -216,8 +218,8 @@ def main():
     # --------------------------------------------------------    
     hdfile = TFile(DATAFILENAME)
     if not hdfile.IsOpen():
-        print "** can't open file %s" % DATAFILENAME
-        sys.exit(0)
+        hutil.error('smearSpectra.py',
+                    "can't open file %s" % DATAFILENAME)
     hdata  = hdfile.Get('hdata')
     hdata.GetYaxis().SetTitle('#sigma / bin (pb)')
     hdata.Scale(1.0/LUMI)
@@ -235,12 +237,13 @@ def main():
     variates = {} # map between (PDF member, mur, muf) and (x, y)
     for index, rootfile in enumerate(rootfiles):
         if not os.path.exists(rootfile):
-            print "\t*** can't find rootfile %s" % rootfile
-            sys.exit(0)
+            hutil.error('smearSpectra.py',
+                        "can't find rootfile %s" % rootfile)
 
         member = getPDFmember.findall(rootfile)
         if len(member) == 0:
-            hutil.error('smearSpectra.py', "can't get PDF member from %s" % \
+            hutil.error('smearSpectra.py',
+                        "can't get PDF member from %s" % \
                         rootfile)
         member = member[0]
 
@@ -270,7 +273,8 @@ def main():
                         variates[key] = (x, y)
 
                     sspectrum = JetSpectrumSmeared(spectrum,
-                                                   JESunc, JERunc,
+                                                   JESunc,
+                                                   JERunc,
                                                    x, y)
                 else:
                     sspectrum = JetSpectrumSmeared(spectrum)

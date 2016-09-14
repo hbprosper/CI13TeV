@@ -16,7 +16,10 @@ from string import *
 from ROOT import *
 #-----------------------------------------------------------------
 EXPECTED = True   # expected limits
-LUMI     = 71.5   # 1/pb
+LUMI     =  71.5   # 1/pb
+#LUMI     = 5000.0
+LMIN     = 0.0
+LMAX     = 0.03 
 WSPACE   = 'CI'
 DEBUG    = 0
 
@@ -41,7 +44,7 @@ def makePlot(ws, likelihood, q,
              lstyle=1,
              lwidth=2,
              ymin=0.0,
-             ymax=0.3):
+             ymax=0.06):
 
     xmin   = q.getMin()
     xmax   = q.getMax()
@@ -119,7 +122,7 @@ def main():
     if len(argv) == 0:
         print '''
     Usage:
-         ./computeLimits.py <workspace-file>
+         ./computeLimits.py <workspace-file> [model = LL, RR, etc.]
         '''
         sys.exit(0)
         
@@ -148,12 +151,19 @@ def main():
     model = ws.pdf('model')
     Nset  = ws.set('Nset')
     poi   = ws.var('lambda')
-
+    poi.setRange(LMIN, LMAX)
+    data  = toVector(ws, 'Nset')
+    nbins = model.numberOfBins()
+    
+    model.setAsimov(EXPECTED, LUMI)
+    model.setBinRange(1, nbins-2) # 24-June-2016, ignore last bin for now
+        
+    
     print "="*80
-    print "computing Bayesian interval"
     print "input filename: %s" % filename
     print "workspace:      %s" % WSPACE
     print "models:         %s" % models
+    print "number of bins: %s" % nbins
     print "="*80
       
     # --------------------------------------
@@ -161,11 +171,8 @@ def main():
     # --------------------------------------
     
     # create wrapper for model
-    pdf   = PDFWrapper(model, Nset, poi)
-
-    CL = 0.95
-    model.setAsimov(EXPECTED, LUMI)
-    model.setBinRange(0, nbins-1)
+    pdf = PDFWrapper(model, Nset, poi)
+    CL  = 0.95
     for key in models:
         
         for sign in [1, -1]:
@@ -184,10 +191,7 @@ def main():
             print "\n\tmodel: %5s\t%s" % (key, kappa)
             for ii in xrange(len(kappa)):
                 vname = 'kappa%d' % ii
-                if energy == '7':
-                    ws.var(vname).setVal(-kappa[ii])
-                else:
-                    ws.var(vname).setVal(kappa[ii])
+                ws.var(vname).setVal(kappa[ii])
                 
             # --------------------------------------
             # compute nominal limits
@@ -196,14 +200,15 @@ def main():
                 del hnom
             except:
                 pass
+
+            model.initialize(-2) # use <cross section>
+                      
+            hnom = makePlot(ws, model, poi, "hnom", color=kBlue, lstyle=2)
             
-            model.setSize()     # use full sample of likelihoods           
-            model.setNumber(0)  # use nominal cross section            
-            hnom = makePlot(ws, model, poi, "hnom", color=kBlue,lstyle=2)
             swatch = TStopwatch()
             swatch.Start()
-            model.setNumber(0)
-            bayes = Bayes(pdf, poi.getMin(), poi.getMax())        
+
+            bayes = Bayes(pdf, data, poi.getMin(), poi.getMax())        
             limit = bayes.quantile(CL)
             if limit > 0:
                 Limit1= 1.0/sqrt(limit)
@@ -219,27 +224,28 @@ def main():
             # compute limits with systematic
             # Uncertainties
             # --------------------------------------
-            model.setNumber(-1) # include systematic uncertainties            
             try:
                 del havg
             except:
                 pass
 
+            model.initialize(-1) # integrate over systematic uncertainties
+                        
             havg = makePlot(ws, model, poi, "havg",
-                            color=lRed,
+                            color=kRed,
                             lstyle=1,
                             lwidth=2)
             clike.cd()
             havg.Draw('l same')
             clike.Update()
 
-            bayes.normalize()
+            bayes = Bayes(pdf, data, poi.getMin(), poi.getMax())        
             limit = bayes.quantile(CL)
             if limit > 0:
                 Limit2 = 1.0/sqrt(limit)
                 print "\tLambda > %8.1f TeV @ %3.1f%s CL (all uncert.)" % \
                     (Limit2, 100*CL, '%')
-                    print "\t\t\t==> real time: %8.3f s " % swatch.RealTime()
+                print "\t\t\t==> real time: %8.3f s " % swatch.RealTime()
             # --------------------------------------
             # plot posterior density and limits
             # --------------------------------------
@@ -247,10 +253,10 @@ def main():
             scribe = addTitle('CMS Preliminary  '\
                               '#surds=%sTeV  L=%s/fb' % \
                               (energy, lumi),
-                              0.035)
+                              0.04)
             scribe.vspace()
-            scribe.write("%s(#kappa=%s) #Lambda > %3.1fTeV" % \
-                         (key, kappa, Limit2), 0.04)
+            scribe.write("%s #kappa = %s #Lambda > %3.1fTeV" % \
+                         (key, kappa, Limit2), 0.06)
                             
             clike.Update()
             clike.SaveAs('.png')

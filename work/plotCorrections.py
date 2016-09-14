@@ -9,12 +9,12 @@ from ROOT import *
 INPFILENAME = '../corrections/ElectroWeakCorrection.root'
 
 def funNP(x, p):
-    # from Sanmay Ganguly (Nov. 2014)
-    A =  1.003
-    B = 77.374
-    n =  1.385
-    pt = x[0]
-    return A + B/pt**n    
+  # from Paolo Gunnellini (2015-12-17)
+  A =   1.00139
+  B = 433.922
+  n =   1.67615
+  pt= x[0]
+  return A + B / pt**n
 #-----------------------------------------------------------------------------
 def main():
 

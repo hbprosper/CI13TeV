@@ -163,7 +163,7 @@ Bayes::normalize()
   if ( _interp == 0)
     _interp = new ROOT::Math::Interpolator(_x.size(),
 					   ROOT::Math::
-					   Interpolation::kCSPLINE);
+					   Interpolation::kLINEAR);
   _interp->SetData(_x, _y);
 
   return _normalization;

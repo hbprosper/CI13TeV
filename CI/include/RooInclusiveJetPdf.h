@@ -19,7 +19,7 @@ class RooInclusiveJetPdf : public RooAbsPdf
 {
 public:
   RooInclusiveJetPdf() {}
-  RooInclusiveJetPdf(const char *name, const char *title,
+  RooInclusiveJetPdf(const char* name, const char* title,
 		     RooArgSet&   _count,
 		     RooAbsReal&  _lambda,
 		     RooArgSet&   _kappa);
@@ -41,22 +41,22 @@ public:
   			    const char* /*rangeName*/) const;
 
   QCDSpectrum* QCD(int c);
-
   CISpectrum*  CI(int c);
 
-  void setBinRange(int first=-1, int last=-1);
-  
-  size_t size() { return maxsize; }
-  void setSize(int n=-1)
-  {
-    int mxsize = qcd.size()-1;
-    maxsize = n < 1 ? mxsize : n < mxsize ? n : mxsize;
-  }
-  void setNumber(int which=0);
-  void setAsimov(bool yes=true, double lumi=19.71, double l=0);
-  void setInterpolate(bool yes=true);
+  ///
+  void initialize(int which=-1);
 
-  int  numberOfBins() { return count.getSize(); }
+  ///
+  void bootstrap(bool yes=true);
+
+  ///
+  void setBinRange(int first=-1, int last=-1);
+
+  ///
+  void setAsimov(bool yes=true, double lumi=1000, double l=0);
+
+  size_t size() { return qcd.size(); }  
+  int    numberOfBins() { return count.getSize(); }
   
   std::vector<double>& Asimov() { return asimov; }
   std::vector<double>& crossSection(int n);
@@ -76,17 +76,20 @@ public:
 
   std::vector<QCDSpectrum> qcd;
   std::vector<CISpectrum>  ci;
- 
+  std::vector<int>         index;
+  
   double smallest;
   int number;
   bool useasimov;
   std::vector<double> asimov;
   std::vector<double> qcdxsect;
   std::vector<double> xsection;
+
   int firstbin;
   int lastbin;
-  int maxsize;
   bool useinterpolation;
+  bool usebootstrap;
+  
   mutable ROOT::Math::Interpolator* interp;
   
   ClassDef(RooInclusiveJetPdf,1)  

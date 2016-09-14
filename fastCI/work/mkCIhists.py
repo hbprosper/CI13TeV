@@ -15,7 +15,7 @@ from ROOT import *
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
 YMIN    = 1.0e-10
 YMAX    = 1.0e+8
-getbin  = re.compile('(?<=ci).+(?=.txt)')
+getbin  = re.compile('(?<=data).+(?=.txt)')
 gSystem.Load("libCI.so")
 
 HISTNAMES = '''
@@ -31,7 +31,7 @@ HISTNAMES = split(strip(HISTNAMES))
 MURMUF = [0, 3, 1, 4, 7, 5, 8]
 #-----------------------------------------------------------------------------
 def getBins():    
-    dirname = '../CT10/000'
+    dirname = '../NNPDF/000'
     txtfilenames = glob('%s/*.txt' % dirname)
     txtfilenames.sort()
 
@@ -39,6 +39,7 @@ def getBins():
     for filename in txtfilenames:
         pt.append( atof(getbin.findall(filename)[0]) )
     pt.append(3500)
+    print pt
     return pt
 
 def makeHist(hname, name, pt, data):
@@ -91,9 +92,9 @@ def main():
 
     PDFset = argv[0]
     if   PDFset[:2] == 'CT':
-        pdfsetdir = '../CT10'
-    elif PDFset[:2] == 'MS':
-        pdfsetdir = '../MSTW'
+        pdfsetdir = '../CT14'
+    elif PDFset[:2] == 'MM':
+        pdfsetdir = '../MMHT'
     elif PDFset[:2] == 'NN':
         pdfsetdir = '../NNPDF'
     else:
@@ -104,8 +105,8 @@ def main():
         PDFindexMin = atoi(argv[1])
         PDFindexMax = PDFindexMin
     else:
-        PDFindexMin = 401
-        PDFindexMax = 500
+        PDFindexMin = 000
+        PDFindexMax = 200
 
     print
     print "\t==> PDFset:            %s" % PDFset
@@ -118,10 +119,12 @@ def main():
         dirname = '%s/%3.3d' % (pdfsetdir, index)        
         if index % 10 == 0:
             print dirname
+       
             
         xsection= []
         for pT in pt[:-1]:
-            filename= '%s/ci%4.4d.txt' % (dirname, pT)
+            #filename= '%s/ci%4.4d.txt' % (dirname, pT)
+            filename= '%s/data%4.4d.txt' % (dirname, pT)
             xsection.append( CIXsection(filename) )
             
         makeHistograms(dirname, 'bi',  6, pt, xsection)
