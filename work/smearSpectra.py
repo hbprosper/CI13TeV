@@ -38,7 +38,7 @@ JECUNFILENAME = '../data/Summer15_50nsV5_DATA_Uncertainty_AK8PF.root'
 EWKFILENAME   = '../data/ElectroWeakCorrection.root'
 EWKHISTNAME   = 'histo'
 #-----------------------------------------------------------------------------
-LUMI = 19710.0 # 1/pb
+LUMI = 71.52 # 1/pb
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
     VERSION = '14-Sep-2016'

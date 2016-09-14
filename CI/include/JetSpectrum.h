@@ -29,7 +29,7 @@ class JetSpectrum
 	      std::string histname,
 	      bool positive_=true,
 	      bool applyNPC_=true,
-	      TH1F* hEWKC_=0);
+	      TH1* hEWKC_=0);
 
   ~JetSpectrum() {}
   
@@ -55,7 +55,7 @@ private:
   bool applyNPC;
   bool applyEWKC;
   bool nullHist;
-  TH1F*  hEWKC;
+  TH1*  hEWKC;
 };
 
 #endif

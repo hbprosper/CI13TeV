@@ -37,7 +37,7 @@ JetSpectrum::JetSpectrum(string filename,
 		   string histname,
 		   bool positive_,
 		   bool applyNPC_,
-		   TH1F* hEWKC_)
+		   TH1* hEWKC_)
   : ptlo(std::vector<double>()),
     pthi(std::vector<double>()),
     ptcn(std::vector<double>()),
