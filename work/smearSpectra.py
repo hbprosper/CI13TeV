@@ -90,7 +90,8 @@ def main():
     getPDFmember = re.compile(cmd)
 
     gSystem.Load("libCI.so")
-          
+    from ROOT import hutil, JECUncertainty, JetSpectrum, JetSpectrumSmeared
+    
     setStyle()
     
     # ------------------------------------------------------------------------
@@ -188,7 +189,7 @@ def main():
         sys.exit(0)
     JESunc = JECUncertainty(JECUNFILENAME)
     JERunc = 0.1 # assume a flat 10% uncertainty in JER
-
+    
     # get electroweak corrections
     if not os.path.exists(EWKFILENAME):
         print "** can't open file %s" % EWKFILENAME
