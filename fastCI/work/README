@@ -1,0 +1,6 @@
+Computing cross sections:
+
+This needs the file input, in which the model is specified as well as the value of Lambda
+Then do, for example,
+
+	cixsec ../CT14/000/data0507.txt xsec0507.txt

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #-------------------------------------------------------------------------------
 import os, sys, re
-from string import *
-from glob import glob
+from time import sleep
+from histutil import *
 from ROOT import *
 #-------------------------------------------------------------------------------
 HISTNAMES = '''
@@ -21,23 +21,46 @@ def main():
     
     cinlo= []
     print '\t...loading NLO CI histograms...'
-    for member in xrange(1, 2):
-        histdir = '../CT10/%3.3d' % member
-        swatch = TStopwatch()
-        for postfix in HISTNAMES:
-            hname = 'nlo%s' % postfix
-            cinlo.append( CISpectrum(histdir, hname) )
-        print "%s\ttime/constructor: %10.3fs" % \
-            (histdir, swatch.RealTime()/(2*len(HISTNAMES)))
+    member = 0
+    histdir = '../CT14/%3.3d' % member
+    for postfix in HISTNAMES:
+        hname = 'nlo%s' % postfix
+        cinlo.append( CISpectrum(hname, hname, histdir, hname) )
+        print hname
 
-    CI = cinlo[-1]
-
-    Lambda = 10.0
+    Lambda = 5.0
     l = 1.0/Lambda**2
     kappa = vector('double')(6, 0)
-    kappa[0] =-1
+
+    setStyle()
+    c = TCanvas('figs/CT14/fig_CI_Lambda_%2.2d' % int(Lambda), '',
+                10, 10, 800, 400)
+    c.Divide(2, 1)
+
+    color = [kRed, kOrange, kYellow+2, kGreen+1, kBlue, kMagenta, kCyan]
+    h = []
+    for i, (k, ymin, ymax) in enumerate([(-1, -0.01, 0.07),
+                                         ( 1, -0.01, 0.07)]):
+        c.cd(i+1)
+        gPad.SetGrid()        
+        kappa[0] = k
+        scribe = Scribe(0.50,0.80)
+        option = 'l'
+        for j, CI in enumerate(cinlo):
+            h.append( CI(l, kappa) )
+            h[-1].SetMinimum(ymin)
+            h[-1].SetMaximum(ymax)
+            h[-1].SetLineColor(kBlue)
+            h[-1].SetLineStyle(j+1)
+            h[-1].Draw(option)
+            option = 'l same'
+        scribe.write('#sqrt{s} = 13TeV')
+        scribe.write('#Lambda  = %dTeV' % int(Lambda))
+        scribe.write('#kappa  = (%d,0,0,0,0,0)' % k)
+        c.Update()
+    c.SaveAs('.png')
+    sleep(10)
     
-    h  = CI(l, kappa)
 #------------------------------------------------------------------------------ 
 main()
 

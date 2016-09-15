@@ -58,23 +58,24 @@ def xsection(cixsec, l, kappa, which=1):
 #-------------------------------------------------------------------------------
 def main():
     gSystem.Load('libCI.so')
-
+    
     Lambda = 10.0
     l = 1.0/Lambda**2
     kappa = vector('double')(6, 0)
     kappa[0] =-1
 
-    histdir = '../CT10/000'
-    dirname = 'CT10_000'
-    bins = [507, 1497]
-    ibin = [20, 36]
-    
-    cifnames = []
+    histdir = '../CT14/000'
+    bins    = [507, 548, 592, 638, 686, 737]
+    cifnames= []
     xsec = {}
     for b in bins:
-        cifnames.append('%s/ci%4.4d.txt' % (histdir, b))
-        
+        cname = '%s/data%4.4d.txt' % (histdir, b)
         fname = 'xsec%4.4d.txt' % b
+        cmd   = 'cixsec %s %s' % (cname, fname)
+        os.system(cmd)
+        
+        cifnames.append(cname)
+        
         print "\n\t==> %s" % fname
         recs = map(split, open(fname).readlines()[6:])
         xsec[b] = []
@@ -88,16 +89,15 @@ def main():
     cilo = []
     cinlo= []
     print '\n\t...loading LO CI histograms...'
-    swatch = TStopwatch()
     for postfix in HISTNAMES:
         hname = 'lo%s' % postfix
-        cilo.append( CISpectrum(histdir,  hname) )
+        cilo.append( CISpectrum(hname, hname, histdir, hname) )
+        
         hname = 'nlo%s' % postfix
-        cinlo.append( CISpectrum(histdir, hname) )
-    print "time/constructor: %10.3fs" % (swatch.RealTime()/(2*len(HISTNAMES)))
+        cinlo.append( CISpectrum(hname, hname, histdir, hname) )
 
     CI = cilo[0]
-    h = CI(l, kappa)
+    h  = CI(l, kappa)
     
     for ii in xrange(h.GetNbinsX()):
         print "%5d\t%10.0f\t%10.3e" % (ii+1,
@@ -110,13 +110,10 @@ def main():
     out = open('testcixsec.txt', 'w')
 
     for index, filename in enumerate(cifnames):
-        cixsec = CIXsection(filename)
-        loxsec = cixsec(l, kappa, 0); loxsec = map(lambda i: loxsec[i], MURMUF)
-        nloxsec= cixsec(l, kappa, 1); nloxsec= map(lambda i:nloxsec[i], MURMUF)
-        xsection = xsec[bins[index]]
-        
-        #lo  = xsection(cixsec, l, kappa, 0)
-        #nlo = xsection(cixsec, l, kappa, 1)
+        cixsec  = CIXsection(filename)
+        loxsec  = cixsec(l, kappa, 0); loxsec = map(lambda i: loxsec[i], MURMUF)
+        nloxsec = cixsec(l, kappa, 1); nloxsec= map(lambda i:nloxsec[i], MURMUF)
+        xsection= xsec[bins[index]]
         
         record = "==> %s" % filename
         
@@ -136,12 +133,11 @@ def main():
         
         for ii in xrange(len(loxsec)):
             hlo  = cilo[ii](l, kappa)
-            xlo = hlo.GetBinContent(ibin[index])*\
-              hlo.GetBinWidth(ibin[index])/2
-              
             hnlo = cinlo[ii](l, kappa)
-            xnlo = hnlo.GetBinContent(ibin[index])*\
-              hnlo.GetBinWidth(ibin[index])/2
+            binno= hlo.FindBin(bins[index])
+            
+            xlo  = hlo.GetBinContent(binno)*hlo.GetBinWidth(binno)/2            
+            xnlo = hnlo.GetBinContent(binno)*hnlo.GetBinWidth(binno)/2
 
             mur, muf, lo, nlo = xsection[ii]
             fmt = " %6s %6s" + 2*" %10s %10.3e %10.3e"
