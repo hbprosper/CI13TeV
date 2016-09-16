@@ -31,7 +31,7 @@ HISTNAMES = split(strip(HISTNAMES))
 MURMUF = [0, 3, 1, 4, 7, 5, 8]
 #-----------------------------------------------------------------------------
 def getBins():    
-    dirname = '../NNPDF/000'
+    dirname = '../CT14/000'
     txtfilenames = glob('%s/*.txt' % dirname)
     txtfilenames.sort()
 
@@ -105,7 +105,7 @@ def main():
         PDFindexMin = atoi(argv[1])
         PDFindexMax = PDFindexMin
     else:
-        PDFindexMin = 000
+        PDFindexMin =   0
         PDFindexMax = 200
 
     print

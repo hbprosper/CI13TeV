@@ -14,7 +14,7 @@ from ROOT import *
 #-----------------------------------------------------------------------------
 def main():
     print "\n\t<=== makeAllCIhists.py ===>"
-    for PDFset in ['MSTW', 'NNPDF']:
+    for PDFset in ['CT14']:
         cmd = '\n./mkCIhists.py %s' % PDFset
         print cmd
         os.system(cmd)                   

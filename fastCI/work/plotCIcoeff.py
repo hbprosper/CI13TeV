@@ -19,10 +19,9 @@ YMIN    = 1.0e-10
 YMAX    = 1.0e+8
 #-----------------------------------------------------------------------------
 gSystem.Load("libCI.so")
-LUMI = 71.52 # 1/pb
 getname = re.compile('(?<=[0-9]/)[ab].+(?=[._])')
-
-PDFS = {'CT14' : 'CT14'}
+SQRTS = 13
+COEFF = 'bi42'
 #-----------------------------------------------------------------------------
 def makePlot(hname, spectrum, pt, COLOR=kBlue):
     x = array('d')
@@ -42,28 +41,25 @@ def makePlot(hname, spectrum, pt, COLOR=kBlue):
 def main():
     print "\n\t<=== plotCIcoeff.py ===>"
     setStyle()
-    os.system('mkdir -p figs/CT14;'\
-              'mkdir -p figs/MMHT;'\
-              'mkdir -p figs/NNPDF;'\
-              'mkdir -p figs/ALL')
-    
+
     # --------------------------------------------------------
     argv = sys.argv[1:]
     argc = len(argv)
     if argc < 1:
         print '''
-    ./plotCIcoeff.py PDFset [PDFnumber=0] [smearing-dir=none]
+    ./plotCIcoeff.py PDFset [PDFmember=0] [smearing-dir=none]
         '''
         sys.exit(0)
 
     PDFset = argv[0]
-    if argc > 1:
-        PDFsetmin = atoi(argv[1])
-        PDFsetmax = PDFsetmin
-    else:
-        PDFsetmin = 0
-        PDFsetmax = 0
+    os.system('mkdir -p figs/%s' % PDFset)
 
+    if argc > 1:
+        PDFmin = atoi(argv[1])
+    else:
+        PDFmin = 0
+    PDFmax = PDFmin
+    
     if argc > 2:
         smearDir = '%s/' % argv[2]
     else:
@@ -73,7 +69,7 @@ def main():
     # --------------------------------------------------------
     print "="*80
     print "\tPDFset:        %s" % PDFset
-    print "\tPDFset(range): %d - %d" % (PDFsetmin, PDFsetmax)
+    print "\tPDFmember:     %d" % PDFmin
     print "\tsmearingDir:   %s" % smearDir
     print "="*80
     # --------------------------------------------------------
@@ -82,7 +78,7 @@ def main():
     hist  = []
     kolor = [kRed, kOrange, kYellow+1, kGreen+1, kBlue, kMagenta]
     jcolor=0       
-    for index in xrange(PDFsetmin, PDFsetmax+1):
+    for index in xrange(PDFmin, PDFmax+1):
         dirname = '../%s/%3.3d/%s' % (PDFset, index, smearDir)
         print dirname
 
@@ -106,11 +102,14 @@ def main():
         # ----------------------------------------------------
         # plot
         # ----------------------------------------------------             
-        figname = 'figs/%s/coeff_%3.3d' %  (PDFset, index)
+        figname = 'figs/%s/coeff_%3.3d_%dTeV' %  (PDFset, index, SQRTS)
         canvas = TCanvas(figname, figname, 10, 10, 1000, 800)
         canvas.Divide(6,10)
 
-        #rootfiles.sort()
+        figname = 'figs/%s/coeff_%3.3d_%dTeV_%s' %  (PDFset, index, SQRTS,
+                                                     COEFF)
+        cbi42 = TCanvas(figname, figname, 400, 200, 500, 500)
+
         lastname = ''
         for kk, (name, rootfile) in enumerate(filelist):
             if lastname in ['ai5',  'ai43', 'aij8',
@@ -133,10 +132,11 @@ def main():
             histnames = filter(lambda x: x[:3] == 'nlo',
                                hutil.histogramNames(hfile))
             canvas.cd(kk+1)
-            option = 'c'
+            option = 'l'
             for histname in histnames:
                 print "\t%s" % histname
                 h = hfile.Get(histname)
+                fixhist2(h)
                 tdir.cd()
                 h = h.Clone('%s%d' % (histname, kk))
                 h.SetLineColor(color)
@@ -144,11 +144,31 @@ def main():
                 h.Draw(option)
                 scribe.write(name)
                 hist.append(h)
-                option = 'c same'
+                option = 'l same'
             canvas.Update()
+
+            if name == COEFF:
+                cbi42.cd()
+                option = 'l'
+                for histname in histnames:
+                    print "\t%s" % histname
+                    h = hfile.Get(histname)
+                    fixhist2(h)
+                    tdir.cd()
+                    h = h.Clone('%s%d-bi42' % (histname, kk))
+                    h.SetLineColor(color)
+                    scribe = Scribe(0.6, 0.7, 0.04)
+                    h.Draw(option)
+                    scribe.write(name)
+                    scribe.write('#sqrt{s} = %dTeV' % SQRTS)
+                    scribe.write('PDF = %s, %d' % (PDFset, PDFmin))
+                    hist.append(h)
+                    option = 'l same'
+                cbi42.Update()
             
             hfile.Close()
-        canvas.SaveAs('.png')            
+        canvas.SaveAs('.png')
+        cbi42.SaveAs('.png')            
     sleep(10)       
 #-----------------------------------------------------------------------------
 try:
