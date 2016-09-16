@@ -41,7 +41,7 @@ EWKHISTNAME   = 'histo'
 LUMI = 71.52 # 1/pb
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
-    VERSION = '14-Sep-2016'
+    VERSION = '16-Sep-2016'
     USAGE = '''
     python smearSpectra.py [options] <pathname to unsmeared spectra>
 
