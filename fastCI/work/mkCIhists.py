@@ -13,6 +13,7 @@ from time import sleep
 from ROOT import *
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
+CIPATH  = os.environ['CIPATH']
 YMIN    = 1.0e-10
 YMAX    = 1.0e+8
 getbin  = re.compile('(?<=data).+(?=.txt)')
@@ -31,15 +32,15 @@ HISTNAMES = split(strip(HISTNAMES))
 MURMUF = [0, 3, 1, 4, 7, 5, 8]
 #-----------------------------------------------------------------------------
 def getBins():    
-    dirname = '../CT14/000'
-    txtfilenames = glob('%s/*.txt' % dirname)
-    txtfilenames.sort()
-
+    filename = '%s/data/bins.txt' % CIPATH    
+    records  = map(lambda x: map(atof, x),
+                   map(split, open(filename).readlines()))
     pt = array('d')
-    for filename in txtfilenames:
-        pt.append( atof(getbin.findall(filename)[0]) )
-    pt.append(3500)
-    print pt
+    for ptlow, pthigh in records:
+        pt.append(ptlow)
+    ptlow, pthigh = records[-1]
+    pt.append(pthigh)
+    print "\t==> pT_min: %5.1f\tpT_max: %6.1f" % (pt[0], pt[-1])
     return pt
 
 def makeHist(hname, name, pt, data):
@@ -47,8 +48,6 @@ def makeHist(hname, name, pt, data):
     h.GetXaxis().SetTitle('Jet p_{T} (GeV)')
     h.SetNdivisions(504, "Y")
     h.GetYaxis().SetTitle('d^{2}%s/dp_{T}dy (pb/GeV)' % name)
-    #h.SetMinimum(YMIN)
-    #h.SetMaximum(YMAX)
     h.SetLineWidth(1)
     
     for ii, d in enumerate(data):
@@ -70,9 +69,6 @@ def makeHistograms(dirname, name, number, pt, xsection):
                               (0, 'lo')]: # NLO, LO
             for jj, jjj in enumerate(MURMUF):
                 hname = '%s%s' % (prefix, HISTNAMES[jj])
-                #mur = xsection[0].mur(jjj)
-                #muf = xsection[0].muf(jjj)
-                #print hname, mur, muf
                 for kk, xsect in enumerate(xsection):
                     cmd = 'xsect.%s(jjj, ii, which)' % name
                     y[kk] = eval(cmd)
@@ -120,10 +116,8 @@ def main():
         if index % 10 == 0:
             print dirname
        
-            
         xsection= []
         for pT in pt[:-1]:
-            #filename= '%s/ci%4.4d.txt' % (dirname, pT)
             filename= '%s/data%4.4d.txt' % (dirname, pT)
             xsection.append( CIXsection(filename) )
             

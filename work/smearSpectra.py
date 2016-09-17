@@ -19,6 +19,7 @@ from time import sleep
 from ROOT import gSystem, gPad, TH1D, TFile, TCanvas, kFALSE, kTRUE
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
+CIPATH  = os.environ['CIPATH']
 YMIN    = 1.0e-10
 YMAX    = 1.0e+8
 #-----------------------------------------------------------------------------
@@ -224,11 +225,11 @@ def main():
     hdata  = hdfile.Get('hdata')
     hdata.GetYaxis().SetTitle('#sigma / bin (pb)')
     hdata.Scale(1.0/LUMI)
-    ptmin = 500.0
-    ptmax =2500.0    
     pT = hutil.binlowedges(hdata)
-    pT.push_back(ptmax)
+    pT.append(pT[-1]+hdata.GetBinWidth(len(pT)))
 
+    print "\n\t==> pT_min: %6.1f\tpT_max: %6.1f\n" % (pT[0], pT[-1])
+    
     # --------------------------------------------------------
     # loop over files and smear selected histograms within
     # each file

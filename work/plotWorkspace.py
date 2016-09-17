@@ -253,10 +253,21 @@ def makePlot(context):
                                                            dirname, postfix),
                      '%s - spectrum-ratio' % dirname,
                      515, 10, 500, 500)
-   
+
+    n = hdata.GetNbinsX()
+    print n, hdata.GetBinLowEdge(1), hdata.GetBinLowEdge(n), \
+      hdata.GetBinWidth(n)
+    
+    n = hqcdnom.GetNbinsX()
+    print n, hqcdnom.GetBinLowEdge(1), hqcdnom.GetBinLowEdge(n), \
+      hqcdnom.GetBinWidth(n)
+    
+
+
     hqcdnom.Scale(scale)
     hratio = hdata.Clone('hratio')
     hratio.Divide(hqcdnom)
+    sys.exit()
     hratio.SetMinimum(0.0)
     hratio.SetMaximum(3.0)
 
