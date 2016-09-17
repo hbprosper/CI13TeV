@@ -105,7 +105,6 @@ def main():
     print "\t==> PDFset index(max): %d" % PDFindexMax
 
     gSystem.Load("libCI.so")
-    #from ROOT import CIXsection
     
     pt = getBins()
     
@@ -116,7 +115,7 @@ def main():
             print dirname
 
         xsection = []
-        for pT in pt[10:-1]:
+        for pT in pt[:-1]:
             filename = '%s/data%4.4d.txt' % (dirname, pT)
             xsec = CIXsection(filename)
             if not xsec.good():
