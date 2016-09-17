@@ -2,6 +2,9 @@
 #-----------------------------------------------------------------------------
 # create inclusive jet CI histograms
 # created 13-Oct-2014 Harrison B. Prosper
+# Updated 17-Sep-2016 HBP - rename from mkCIhists.py to createCIhists.py
+#                         - get CIPATH, which points to CI13TeV and which is
+#                           set in setup.sh
 #-----------------------------------------------------------------------------
 import os, sys, re
 from math import *
@@ -82,7 +85,7 @@ def main():
     argc = len(argv)
     if argc < 1:
         print '''
-    ./mkCIhists.py PDFset [PDFindex=all]
+    ./createCIhists.py PDFset [PDFindex=all]
         '''
         sys.exit(0)
 
