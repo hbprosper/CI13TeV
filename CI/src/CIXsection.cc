@@ -17,6 +17,7 @@ using namespace std;
 
 CIXsection::CIXsection(std::string filename)
   : _filename(filename),
+    _status(0),
     loinf (std::vector<std::vector<double> >(9, std::vector<double>(12))), 
     lobi1 (std::vector<std::vector<double> >(9, std::vector<double>(18))), 
     lobi2 (std::vector<std::vector<double> >(9, std::vector<double>(8))),
@@ -37,10 +38,12 @@ CIXsection::CIXsection(std::string filename)
   ifstream fin(_filename.c_str());
   if ( !fin.good() )
     {
-      std::cout << "" << std::endl;
-      exit(0);
+      std::cout << "*** CIXsection: cannot open file "
+		<< _filename << std::endl;
+      _status = -1;
+      return;
     }
-
+  
   string line, datum;
   // check file size
   tcall = 0;
@@ -60,7 +63,7 @@ CIXsection::CIXsection(std::string filename)
 	exit(0);
       }
   }
-
+  
   // reopen and read coefficients
   fin.open(_filename.c_str());
   getline(fin, line);

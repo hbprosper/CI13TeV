@@ -14,6 +14,8 @@ public:
   CIXsection(std::string filename);
   ~CIXsection() {}
 
+  bool good() { return _status == 0; }
+  
   double mu0() { return _mu0; }
 
   double muf(int index) 
@@ -80,6 +82,7 @@ public:
 
 private:
   std::string _filename;
+  int _status;
   std::vector<std::vector<double> >  loinf,  lobi1,  lobi2; 
   std::vector<std::vector<double> > nloinf, nlobi1, nlobi2;
   std::vector<double> loxsec, nloxsec;

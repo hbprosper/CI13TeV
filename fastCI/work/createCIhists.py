@@ -7,20 +7,13 @@
 #                           set in setup.sh
 #-----------------------------------------------------------------------------
 import os, sys, re
-from math import *
-from histutil import *
+#from histutil import *
 from string import *
-from glob import glob
 from array import array
-from time import sleep
 from ROOT import *
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
 CIPATH  = os.environ['CIPATH']
-YMIN    = 1.0e-10
-YMAX    = 1.0e+8
-getbin  = re.compile('(?<=data).+(?=.txt)')
-gSystem.Load("libCI.so")
 
 HISTNAMES = '''
 _0.500_0.500
@@ -65,7 +58,6 @@ def makeHistograms(dirname, name, number, pt, xsection):
     for ii in xrange(number):
         namen = '%s%d' % (name, ii)
         hfilename = '%s/%s.root' % (dirname, namen)
-        #print "\t%s" % hfilename
         hfile = TFile(hfilename, 'recreate')
         hist = []
         for which, prefix in [(1, 'nlo'),
@@ -88,7 +80,7 @@ def main():
     ./createCIhists.py PDFset [PDFindex=all]
         '''
         sys.exit(0)
-
+        
     PDFset = argv[0]
     if   PDFset[:2] == 'CT':
         pdfsetdir = '../CT14'
@@ -112,18 +104,26 @@ def main():
     print "\t==> PDFset index(min): %d" % PDFindexMin
     print "\t==> PDFset index(max): %d" % PDFindexMax
 
+    gSystem.Load("libCI.so")
+    #from ROOT import CIXsection
+    
     pt = getBins()
+    
     hfile = []
     for index in xrange(PDFindexMin, PDFindexMax+1):
         dirname = '%s/%3.3d' % (pdfsetdir, index)        
         if index % 10 == 0:
             print dirname
-       
-        xsection= []
-        for pT in pt[:-1]:
-            filename= '%s/data%4.4d.txt' % (dirname, pT)
-            xsection.append( CIXsection(filename) )
-            
+
+        xsection = []
+        for pT in pt[10:-1]:
+            filename = '%s/data%4.4d.txt' % (dirname, pT)
+            xsec = CIXsection(filename)
+            if not xsec.good():
+                print "*** problem"
+                sys.exit()
+            xsection.append(xsec) 
+
         makeHistograms(dirname, 'bi',  6, pt, xsection)
         makeHistograms(dirname, 'aig', 6, pt, xsection)
         makeHistograms(dirname, 'ai',  6, pt, xsection)

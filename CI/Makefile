@@ -82,10 +82,6 @@ CPPFLAGS:= -I. -I$(incdir) -I$(srcdir) $(shell root-config --cflags)
 
 CXXFLAGS:= -c -g -O2 -ansi -Wall -pipe -fPIC
 
-#	C++ Linker
-#   set default path to shared library
-LD	:= clang++
-
 OS	:= $(shell uname -s)
 ifeq ($(OS),Darwin)
 	LDSHARED	:= $(LD) -dynamiclib
