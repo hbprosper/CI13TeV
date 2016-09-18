@@ -18,21 +18,26 @@ from ROOT import gSystem, TFile, kFALSE, kTRUE, \
      RooWorkspace, RooMsgService, RooFit, RooDataSet, RooCmdArg
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
+CIPATH  = os.environ['CIPATH']
 DATAFILE= '../data/data_13TeV_L000.07152ifb.root'
 PDFDIR  = 'CT14'
-NDIRS   = 200
+NMEMBERS= 200 # number of PDF members/PDF set to use
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
-    VERSION = '16-May-2016'
+    VERSION = '17-Sep-2016'
     USAGE = '''
-    python createWorkspace.py [options] [PDF sets=CT14 NNPDF MMHT]
+    python createWorkspace.py [options] [PDF=CT14 NNPDF MMHT]
 
     options
        -s<smearing>  jes+jer+pdf, jes+jer, pdf [def.=jes+jer+pdf]
        -o<root filename>                       [def.=<PDF>_<s>_workspace.root]
-       -n<number of directories>               [def.=%d]
-       -h (help)
-    ''' % NDIRS
+       -n<number of PDF members>               [def.=%d]
+       -b                                      [boostrap] 
+    ''' % NMEMBERS
+    if len(sys.argv) < 2:
+        print USAGE
+        sys.exit()
+        
     parser = optparse.OptionParser(usage=USAGE,
                                    version=VERSION)
     parser.add_option('-s', '--smearing',
@@ -49,14 +54,18 @@ def decodeCommandLine():
                       default='',
                       help='output file containing QCD and CI spectra')    
 
-    parser.add_option('-n', '--nspectra',
+    parser.add_option('-n', '--nmembers',
                       action='store',
-                      dest='nspectra',
+                      dest='nmembers',
                       type='int',
-                      default=NDIRS,
-                      help='number of randomly sampled spectra to use'\
-                      ' MC bootstrap integration ')
-                                  
+                      default=NMEMBERS,
+                      help='number of PDF members to use/PDF set')
+
+    parser.add_option('-b', '--bootstrap',
+                      action='store_true',
+                      dest='bootstrap',
+                      help='use a bootstrap sample of spectra')    
+                                      
     options, PDFsets = parser.parse_args()
     if len(PDFsets) == 0:
         PDFsets = ['CT14', 'MMHT', 'NNPDF']
@@ -72,16 +81,21 @@ def decodeCommandLine():
         else:
             prefix = PDFsets[0]
         filename = '%s_%s_workspace.root' % (prefix, directory)
+
+    # for PDF smearing only, we do not need a separate directory
+    if directory == 'PDF':
+        directory = ''
+    else:
+        directory = '/%s' % directory
         
-    return (directory, PDFsets, filename, options.nspectra)
+    return (directory, PDFsets, filename, options.nmembers, options.bootstrap)
 #-----------------------------------------------------------------------------
 def main():
     print "\n\t\t\t=== createWorkspace.py ==="
-    
-    dirname, PDFsets, wfilename, ndirs = decodeCommandLine()
-    
-    print
-    print dirname, PDFsets, wfilename, ndirs
+
+    # number of PDF members = number of subdirectories under each PDF
+    # directory
+    dirname, PDFsets, wfilename, ndirs, bootstrap = decodeCommandLine()
 
     gSystem.Load("libCI")
     from ROOT import hutil, QCDSpectrum, CIXsection, CISpectrum, \
@@ -96,19 +110,11 @@ def main():
     else:
         first = 1
         ndirs+= 1
-
-    # -------------------------------------
-    # create a random (bootstrap) sample
-    # of spectra that will serve as the
-    # sample to approximate the integral of
-    # the likelihood over the JES, JER, and
-    # PDF nuisance parameters. Use the
-    # bootstrap algorithm Roberto implemented
-    # since he has shown that it works well.                
+      
     # -------------------------------------                
     # get list of histograms
     # -------------------------------------            
-    rootfile = '../fastNLO/%s/000/%s/qcd.root' % (PDFDIR, dirname)
+    rootfile = '../fastNLO/%s/000%s/qcd.root' % (PDFDIR, dirname)
     if not os.path.exists(rootfile):
         hutil.error("createWorkspace.py",
                     "can't find rootfile %s" % rootfile)
@@ -118,14 +124,21 @@ def main():
                     "can't open rootfile %s" % rootfile)
     histnames = hutil.histogramNames(hfile)
     hfile.Close()
+
+    # pick only nlo histograms
+    histnames = filter(lambda x: x[:3] == 'nlo', histnames)
     for ii, histname in enumerate(histnames):
         print "%2d\t%s" % (ii+1, histname)
-        
-    # get list of QCD directories containing spectra
+
+    # -------------------------------------                     
+    # get list of QCD directories, each
+    # associated with a different PDF
+    # member
+    # -------------------------------------            
     QCDdirs = []
     for pdfset in PDFsets:
         for member in xrange(first, ndirs):
-            filename = '../fastNLO/%s/%3.3d/%s' % (pdfset, member, dirname)
+            filename = '../fastNLO/%s/%3.3d%s' % (pdfset, member, dirname)
             QCDdirs.append(filename)
     QCDdirs.sort()
 
@@ -133,44 +146,56 @@ def main():
     # make a sample of histograms in which
     # the renormalization and factorization
     # scales are randomly selected.
+    #
     # Each histogram corresponds to a
     # randomly selected PDF set, pair of
     # renormalization and factorization
     # scales,PDFs, jet energy scale, and
     # jet energy resolution.
     # -------------------------------------
-    print
+
     nspectra = len(QCDdirs)*len(histnames)
-    print "==> create a bootstrap sample of %d spectra..." % nspectra
     spectra = [None]*nspectra
-    
-    for jj in xrange(nspectra):
 
-        # randomly pick a PDF member from the PDF set
-        member = randint(0, len(QCDdirs)-1)        
-        qcddir = QCDdirs[member]
-        
-        # randomly pick a histogram (each corresponding
-        # to different choices of renormalization and
-        # factorization scales)
-        ii = randint(0, len(histnames)-1)
-        histname = histnames[ii]
-        spectra[jj] = (qcddir, histname)
+    if bootstrap:
+        for jj in xrange(nspectra):
 
+            # randomly pick a PDF member from the PDF set
+            member = randint(0, len(QCDdirs)-1)        
+            qcddir = QCDdirs[member]
+
+            # randomly pick a histogram (each corresponding
+            # to different choices of renormalization and
+            # factorization scales)
+            ii = randint(0, len(histnames)-1)
+            histname = histnames[ii]
+            spectra[jj] = (qcddir, histname)
+    else:
+        jj = 0
+        for qcddir in QCDdirs:
+            for histname in histnames:
+                spectra[jj] = (qcddir, histname)
+                jj += 1
+                
     # insert nominal QCD histogram for CT14 with nominal
     # scales at position 0 in list of spectra
-    qcddir = '../fastNLO/%s/000/%s' % (PDFDIR, dirname)
+    qcddir = '../fastNLO/%s/000%s' % (PDFDIR, dirname)
     fqcdnom = glob(qcddir)
     if len(fqcdnom) == 1:
         fqcdnom = fqcdnom[0]
     else:
         hutil.error("createWorkspace.py",
                     "can't find directory %s" % qcddir)      
-    histname = 'nlo_1.000_1.000_000'
+    histname = histnames[3] #(mur, muf=1, 1)
     spectra.insert(0, (qcddir, histname))
 
     print "="*80
-    print "==> number of spectra: %d" % len(spectra)
+    print "==> nominal spectrum:  %s, %s" % (spectra[0])
+    print "==> number of spectra: %d" % len(spectra),
+    if bootstrap:
+        print "\t(use bootstrap sample)"
+    else:
+        print "\t(use original sample)"
     
     # --------------------------------------
     # create RooFit workspace
@@ -189,9 +214,9 @@ def main():
     # create model parameters
     # Note: l = 1/Lambda^2
     # -------------------------------------    
-    ws.factory('lambda[0, 0, 0.015]')
+    ws.factory('lambda[0, 0, 0.02]')
     l = ws.var("lambda")
-    l.setBins(150)    
+    l.setBins(200)    
     # note upper case "S" in SetTitle; yes this is annoying!
     l.SetTitle('#font[12]{#lambda} = 1/#Lambda^{2} (TeV^{-2})')
 

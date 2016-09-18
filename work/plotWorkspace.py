@@ -122,10 +122,7 @@ def makePlot(context):
     smearing = getsmearing.findall(qcdspectrum[0].dirname())[0]
     dirname  = split(context.filename, '_')[0]
 
-    if   smearing == 'NONE':
-        label = 'no smearing'
-        postfix = '_NONE'
-    elif smearing == 'JESJER':
+    if smearing == 'JESJER':
         label  = 'JES+JER uncert.'
         postfix= '_JESJER'         
     elif smearing == 'PDF':
@@ -417,7 +414,7 @@ def main():
             context.interf= 'constructive'
             makePlot(context)
 
-            waitForKey("\n**hit any key to continue ")
+            waitForKey("\n\t**hit any key to continue ")
             
             for ii in xrange(kappa.size()):
                 kappa[ii] =-KAPPA[model][ii]

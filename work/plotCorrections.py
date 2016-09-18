@@ -6,24 +6,21 @@ from array import array
 from time import sleep
 from ROOT import *
 #-------------------------------------------------------------------------------
-INPFILENAME = '../corrections/ElectroWeakCorrection.root'
-
-def funNP(x, p):
-  # from Paolo Gunnellini (2015-12-17)
-  A =   1.00139
-  B = 433.922
-  n =   1.67615
-  pt= x[0]
-  return A + B / pt**n
+INPFILENAME = '../data/ElectroWeakCorrection.root'
 #-----------------------------------------------------------------------------
 def main():
 
     gSystem.Load('libCI.so')
 
-    A =  1.003
-    B = 77.374
-    n =  1.385    
-    fNP = TF1('NPcor', "%f + %f/pow(x[0], %f)" % (A, B, n), 500, 2500)
+    def funNP(x, p):
+        # from Paolo Gunnellini (2015-12-17)
+        A = p[0]
+        B = p[1]
+        n = p[2]
+        pT= x[0]
+        return A + B / pT**n
+    fNP = TF1('NPcor', funNP, 500, 2500, 3)
+    fNP.SetParameters(1.00139, 433.922, 1.67615)
     fNP.SetLineColor(kRed)
     fNP.SetLineWidth(2)
 
@@ -35,13 +32,11 @@ def main():
 
     htmp1 = mkhist1('htmp1', 'Jet p_{T} (GeV)',
                     'Correction Factor', 50, 500, 2500)
-    htmp1.SetMinimum(0.9)
+    htmp1.SetMinimum(0.8)
     htmp1.SetMaximum(1.2)
     htmp1.SetNdivisions(505, "Y")
     
-    h = hfile.Get("IncJet_Ewk_Y0")
-
-
+    h = hfile.Get("histo")
     h.GetYaxis().SetTitle('Corrections')
     h.GetYaxis().SetTitleOffset(1.6)
     h.SetNdivisions(505, "Y")
@@ -55,20 +50,21 @@ def main():
     h.SetLineWidth(2)
     h.SetAxisRange(500, 2500)
 
-    legend = mklegend(0.24, 0.70, 0.36, 0.18)
-    legend.AddEntry(h, 'EWK correction', 'l')    
-    legend.AddEntry(fNP, 'NP correction', 'l')
+    legend = mklegend(0.24, 0.75, 0.62, 0.18)
+    legend.AddEntry(h,   'Electroweak correction', 'l')    
+    legend.AddEntry(fNP, 'Non-pertubative correction', 'l')
 
     
-    c1 = TCanvas('figs/Corrections', "Corrections", 10, 10, 500, 500)
+    c1 = TCanvas('figures/fig_corrections', "Corrections", 10, 10, 500, 500)
     c1.cd()
+    gPad.SetGrid()
     htmp1.Draw()
     fNP.Draw('c same')
     h.Draw('c same')
     legend.Draw()
-    scribe = addTitle('CMS Preliminary  #surds=8TeV CI Search', 0.035)
+    scribe = addTitle('CMS Preliminary  #surds=13TeV', 0.035)
     c1.Update()
-    c1.SaveAs('.pdf')
+    c1.SaveAs('.png')
 
     sleep(10)
 #-----------------------------------------------------------------------------
