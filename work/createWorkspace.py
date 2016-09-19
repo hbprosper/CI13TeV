@@ -15,7 +15,7 @@ from array import array
 from time import sleep
 from random import shuffle, randint
 from ROOT import gSystem, TFile, kFALSE, kTRUE, \
-     RooWorkspace, RooMsgService, RooFit, RooDataSet, RooCmdArg
+     RooWorkspace, RooMsgService, RooFit, RooDataSet, RooCmdArg, vector
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
 CIPATH  = os.environ['CIPATH']
@@ -29,10 +29,10 @@ def decodeCommandLine():
     python createWorkspace.py [options] [PDF=CT14 NNPDF MMHT]
 
     options
-       -s<smearing>  jes+jer+pdf, jes+jer, pdf [def.=jes+jer+pdf]
-       -o<root filename>                       [def.=<PDF>_<s>_workspace.root]
-       -n<number of PDF members>               [def.=%d]
-       -b                                      [boostrap] 
+       -s<smearing>  pdf, jec, jecpdf          [jecpdf]
+       -o<root filename>                       [<PDF>_<s>_workspace.root]
+       -n<number of PDF members>               [%d]
+       -b                                      [no boostrap] 
     ''' % NMEMBERS
     if len(sys.argv) < 2:
         print USAGE
@@ -44,7 +44,7 @@ def decodeCommandLine():
                       action='store',
                       dest='smearing',
                       type='string',
-                      default='jes+jer+pdf',
+                      default='jecpdf',
                       help='level of smearing to use')
 
     parser.add_option('-o', '--output',
@@ -71,7 +71,7 @@ def decodeCommandLine():
         PDFsets = ['CT14', 'MMHT', 'NNPDF']
 
     # create directory name to contain smeared spectra
-    directory = upper(replace(options.smearing, '+', ''))
+    directory = upper(options.smearing)
 
     # create name of output file
     filename = options.filename
@@ -82,21 +82,18 @@ def decodeCommandLine():
             prefix = PDFsets[0]
         filename = '%s_%s_workspace.root' % (prefix, directory)
 
-    # for PDF smearing only, we do not need a separate directory
-    if directory == 'PDF':
-        directory = ''
-    else:
-        directory = '/%s' % directory
+    directory = '/%s' % directory
         
-    return (directory, PDFsets, filename, options.nmembers, options.bootstrap)
+    return (directory, PDFsets, filename,
+            options.nmembers, options.bootstrap, options.smearing)
 #-----------------------------------------------------------------------------
 def main():
     print "\n\t\t\t=== createWorkspace.py ==="
 
     # number of PDF members = number of subdirectories under each PDF
     # directory
-    dirname, PDFsets, wfilename, ndirs, bootstrap = decodeCommandLine()
-
+    dirname, PDFsets, wfilename, ndirs, bootstrap, smearing=decodeCommandLine()
+    
     gSystem.Load("libCI")
     from ROOT import hutil, QCDSpectrum, CIXsection, CISpectrum, \
      RooInclusiveJetPdf
@@ -104,7 +101,7 @@ def main():
     # -------------------------------------
     # determine which files to use
     # -------------------------------------
-    if dirname == 'JESJER':
+    if dirname == 'JEC':
         first = 0
         ndirs = 1
     else:
@@ -188,22 +185,25 @@ def main():
                     "can't find directory %s" % qcddir)      
     histname = histnames[3] #(mur, muf=1, 1)
     spectra.insert(0, (qcddir, histname))
-
+    nspectra = len(spectra)
+    
     print "="*80
     print "==> nominal spectrum:  %s, %s" % (spectra[0])
-    print "==> number of spectra: %d" % len(spectra),
+    print "==> number of spectra: %d" % nspectra,
     if bootstrap:
         print "\t(use bootstrap sample)"
     else:
         print "\t(use original sample)"
-    
+
     # --------------------------------------
-    # create RooFit workspace
+    # create RooFit workspace. the workspace
+    # assumes headers are in include and
+    # sources are in src
     # --------------------------------------
     print "==> create workspace..."
     RooWorkspace.autoImportClassCode(kTRUE)
-    RooWorkspace.addClassDeclImportDir('../CI/include')
-    RooWorkspace.addClassImplImportDir('../CI/src')
+    RooWorkspace.addClassDeclImportDir('../CI')
+    RooWorkspace.addClassImplImportDir('../CI')
     
     ws = RooWorkspace("CI")
 
@@ -238,6 +238,8 @@ def main():
     hdata.GetXaxis().SetTitle('Jet #font[12]{p}_{T} (GeV)')
     hdata.GetYaxis().SetTitle('count / bin')
     nbins = hdata.GetNbinsX()
+    ptlow = hdata.GetBinLowEdge(1)
+    
     getattr(ws, 'import')(hdata, 'hdata')
 
     # cretae a RooFit parameter for each count
@@ -281,17 +283,35 @@ def main():
     for index, (QCDdir, histname) in enumerate(spectra):
         # get CI directory associated with current QCD spectrum
         CIdir = replace(QCDdir, 'fastNLO', 'fastCI')
-        if index % 500 == 0:
+        if index % 100 == 0:
             print "%5d %s\t%s" % (index, QCDdir, histname)
 
         name = "QCD%5.5d" % index
         qcdrecords.append(name)
-        qcdspectrum.append(QCDSpectrum(name, name, QCDdir, histname))
-
+        qcdspectrum.append(QCDSpectrum(name, name, QCDdir,
+                                       histname, nbins, ptlow))
+        if index == 0:
+            h  = qcdspectrum[-1]()
+            nb = h.GetNbinsX()
+            print "\tQCD spectrum check: %d, %6.1f, %6.1f" % \
+              (nb,
+               h.GetBinLowEdge(1),
+               h.GetBinLowEdge(nb)+h.GetBinWidth(nb))
+            
         name = "CI%5.5d" % index
         cirecords.append(name)
-        cispectrum.append( CISpectrum(name, name, CIdir, histname) )
-
+        cispectrum.append( CISpectrum(name, name, CIdir,
+                                      histname, nbins, ptlow))
+        if index == 0:
+            k = vector('double')(6,0)
+            k[0]=-1        
+            h  = cispectrum[-1](0, k)
+            nb = h.GetNbinsX()
+            print "\tCI  spectrum check: %d, %6.1f, %6.1f" % \
+              (nb,
+               h.GetBinLowEdge(1),
+               h.GetBinLowEdge(nb)+h.GetBinWidth(nb))
+        
         # also add spectra to probability model
         model.add(qcdspectrum[-1], cispectrum[-1])
 

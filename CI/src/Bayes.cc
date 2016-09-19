@@ -28,6 +28,8 @@ using namespace std;
 
 // function to be minimized
 namespace {
+  const int RULE=5;
+  const double RELTOL=1.e-4;
   const int MAXITER=1000;
   const double TOLERANCE=1.e-4;
   Bayes* OBJ=0;
@@ -127,45 +129,33 @@ Bayes::normalize()
   ROOT::Math::WrappedMemFunction<Bayes, double (Bayes::*)(double)> 
     fn(*this, &Bayes::_likeprior);
   ROOT::Math::Integrator ifn(fn);
+  ifn.SetRelTolerance(RELTOL);
   _normalization = ifn.Integral(_poimin, _poimax);
   _normalize = false;
   
   // Compute cdf at several points
-  vector<double> p(_nsteps+1);
+  _x.clear();
+  _y.clear();  
+  _x.push_back(_poimin);
+  _y.push_back(0);
   double step = (_poimax - _poimin)/_nsteps;
-  for(int i=0; i < _nsteps+1; i++)
+  double ysum = 0;
+  for(int i=1; i < _nsteps+1; i++)
     {
       double xx = _poimin + i*step;
-      p[i] = posterior(xx);
+      _x.push_back(xx);
+      double y = _likeprior(xx);
+      ysum += y;
+      _y.push_back(y + _y.back());
     }
-
-  vector<double> c1(_nsteps, 0);
-  for(int i=1; i < _nsteps+1; i++)
-    c1[i] = c1[i-1] + 0.5*step*(p[i]+p[i-1]);
-  
-  _x.clear();
-  _y.clear();
-  double c2 = 0;
-  _x.push_back(_poimin);
-  _y.push_back(c2);
-  for(int i=2; i < _nsteps+1; i+=2)
-    {
-      double p1 = p[i-2];
-      double p2 = p[i];
-      c2 += step*(p2+p1);
-      
-      _x.push_back(_poimin + i*step);          
-      double z = (4*c1[i]-c2)/3;
-      if ( z > 1 ) z = 1;
-      _y.push_back(z);
-    }
+  for(int i=0; i < _nsteps+1; i++) _y[i] /= ysum;
 
   if ( _interp == 0)
     _interp = new ROOT::Math::Interpolator(_x.size(),
 					   ROOT::Math::
 					   Interpolation::kLINEAR);
   _interp->SetData(_x, _y);
-
+  
   return _normalization;
 }
 

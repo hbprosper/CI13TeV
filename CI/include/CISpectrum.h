@@ -14,8 +14,10 @@ class CISpectrum : public RooAbsReal
  CISpectrum() : RooAbsReal() {}
   CISpectrum(const char* namen, const char* title,
 	     std::string _histdir, std::string _histname,
-	     std::string _filename="",
-	     std::string _prefix="");
+	     int nbins=0,
+	     double ptmin=0,
+	     std::string prefix="",
+	     std::string filename="");
   CISpectrum(const CISpectrum& other, const char* newname=0);
   ~CISpectrum() {}
 
@@ -52,8 +54,9 @@ class CISpectrum : public RooAbsReal
  private:
   std::string histdir_;
   std::string histname_;
-  std::string filename_;
-
+  int nbins_;
+  double ptmin_;
+  
   std::vector<std::vector<double> > bi;  
   std::vector<std::vector<double> > aig;  
   std::vector<std::vector<double> > ai; 
@@ -67,6 +70,7 @@ class CISpectrum : public RooAbsReal
   std::vector<std::vector<double> > ai4;
 
   std::vector<double> pt;
+  
   TH1D* xsec;
 
   void init(std::string rootfile, 

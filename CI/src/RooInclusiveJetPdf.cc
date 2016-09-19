@@ -114,8 +114,14 @@ vector<double>& RooInclusiveJetPdf::crossSection(int c)
   return xsection;
 }
 
+// adopt Root convention: start counting at 1
 void RooInclusiveJetPdf::setBinRange(int first, int last)
 {
+  // subtract one since internally we use C++ convention
+  // and start counting at zero
+  first--;
+  last--;
+  
   if ( first < 0 ) first = 0;
   if ( first > count.getSize()-1 ) first = count.getSize()-1;
   if ( last  < 0 ) last  = count.getSize()-1;
@@ -123,8 +129,9 @@ void RooInclusiveJetPdf::setBinRange(int first, int last)
   if ( first > last ) first = last;
   firstbin = first;
   lastbin  = last;
-  cout << "RooInclusiveJetPdf: bin range["
-       << firstbin << "..." << lastbin << "]"
+  cout << endl
+       << "RooInclusiveJetPdf: bin range["
+       << firstbin+1 << "..." << lastbin+1 << "]"
        << endl;
 }
 

@@ -34,11 +34,11 @@ class Context:
 #-----------------------------------------------------------------------------
 getpdfdir   = re.compile('(?<=fastNLO/).+(?=/[0-9])|(?<=fastCI/).+(?=/[0-9])')
 getsmearing = re.compile('(?<=/[0-9][0-9][0-9]/).+')
-PDFS = {'ALL'  : 'CT14, MMHT2014, NNPDF30',
-        'CT14' : 'CT14',
-        'MMHT' : 'MMHT2014',
-        'NNPDF': 'NNPDF30'}
-#-----------------------------------------------------------------    
+PDFS = {'ALL'  : 'CT14nlo, MMHT2014nlo, NNPDF30_nlo',
+        'CT14' : 'CT14nlo',
+        'MMHT' : 'MMHT2014nlo',
+        'NNPDF': 'NNPDF30_nlo'}
+
 def check(o, message):
     if o == None:
         print "** %s **" % message
@@ -117,20 +117,32 @@ def makePlot(context):
     lam   = 1.0/Lambda**2
     pTmin = pT[0]
     pTmax = pT[-1]
-    nbins = hdata.GetNbinsX()
-    # --------------------------------------------------------
-    smearing = getsmearing.findall(qcdspectrum[0].dirname())[0]
-    dirname  = split(context.filename, '_')[0]
 
-    if smearing == 'JESJER':
-        label  = 'JES+JER uncert.'
-        postfix= '_JESJER'         
+    # --------------------------------------------------------
+    # number of bins and range
+    # --------------------------------------------------------    
+    nbins  = hdata.GetNbinsX()
+    pTLOW  = hdata.GetBinLowEdge(1)
+    pTHIGH = hdata.GetBinLowEdge(nbins)+hdata.GetBinWidth(nbins)
+        
+    # --------------------------------------------------------
+    # determine nature of smearing 
+    # --------------------------------------------------------    
+    dirname = qcdspectrum[0].dirname()
+    smearing = getsmearing.findall(dirname)[0]
+    
+    if smearing == 'JEC':
+        label  = 'JEC uncertainties only'
     elif smearing == 'PDF':
-        label  = 'PDF uncert.'
-        postfix= '_PDF'
+        label  = 'PDF uncertainties only'
     else:
-        label  = 'JES+JER+PDF uncert.'
-        postfix= '_JESJERPDF'
+        label  = 'JEC + PDF uncertainties'
+    postfix = '_%s' % smearing
+
+    # get PDF (directory) name
+    prefix  = nameonly(context.filename)
+    dirname = split(prefix, '_')[0]
+
     
     # --------------------------------------------------------
     print "="*80
@@ -167,8 +179,9 @@ def makePlot(context):
     # --------------------------------------------------------
     os.system('mkdir -p figures/%s' % dirname)
     
-    name = 'figures/%s/%s_d2sigma_dpTdy%s' % (dirname,
-                                              dirname, postfix)
+    name = 'figures/%s/%s_xsection%s' % (dirname, prefix, postfix)
+    print
+    print name
     cspect = TCanvas(name, name, 10, 10, 500, 500)
     x = map(lambda i: (pT[i+1]+pT[i])/2, range(nbins))
 
@@ -184,11 +197,21 @@ def makePlot(context):
     hqcdnom = qcdspectrum[0]()
     hutil.divideByWidth(hqcdnom) # convert to a density
     hqcdnom.SetLineColor(kBlue)            
-                
+
+    print
+    n = hdata.GetNbinsX()
+    print "data: bins %d, pT-range = (%-6.1f ... %-6.1f) GeV" % \
+      (n, hdata.GetBinLowEdge(1), hdata.GetBinLowEdge(n)+hdata.GetBinWidth(n))
+    
+    n = hqcdnom.GetNbinsX()
+    print "QCD0: bins %d, pT-range = (%-6.1f ... %-6.1f) GeV" % \
+      (n, hqcdnom.GetBinLowEdge(1),
+       hqcdnom.GetBinLowEdge(n)+hqcdnom.GetBinWidth(n))
+       
     xdata = hdata.Integral()
     xsect = hqcdnom.Integral()
     scale = xdata / xsect
-    print "\n==> data/theory: %10.3f\n" % scale
+    print "\n==> data/theory: %10.2f\n" % scale
     
     # compute percentile spectra
     curve = []
@@ -242,29 +265,18 @@ def makePlot(context):
     
     cspect.Update()
     cspect.SaveAs('.png')
-
+    
     # --------------------------------------------------------
     # now plot the ratio
     # --------------------------------------------------------
-    cratio = TCanvas('figures/%s/%s_data_over_theory%s' % (dirname,
-                                                           dirname, postfix),
-                     '%s - spectrum-ratio' % dirname,
+    cratio = TCanvas('figures/%s/%s_xsection_ratio%s' % (dirname,
+                                                         prefix, postfix),
+                     '%s - xsection-ratio' % dirname,
                      515, 10, 500, 500)
 
-    n = hdata.GetNbinsX()
-    print n, hdata.GetBinLowEdge(1), hdata.GetBinLowEdge(n), \
-      hdata.GetBinWidth(n)
-    
-    n = hqcdnom.GetNbinsX()
-    print n, hqcdnom.GetBinLowEdge(1), hqcdnom.GetBinLowEdge(n), \
-      hqcdnom.GetBinWidth(n)
-    
-
-
-    hqcdnom.Scale(scale)
+    #hqcdnom.Scale(scale)
     hratio = hdata.Clone('hratio')
     hratio.Divide(hqcdnom)
-    sys.exit()
     hratio.SetMinimum(0.0)
     hratio.SetMaximum(3.0)
 
@@ -319,6 +331,7 @@ def makePlot(context):
                                                     interf), 0.04)
     scriber.write(PDFS[dirname], 0.04)
     scriber.write(label, 0.04)
+    scriber.write('data / theory = %3.2f' % scale, 0.04)
 
     lg = mklegend(xp, yp, xw, yw)
     lg.AddEntry(hratio, 'data', 'p')
@@ -329,9 +342,8 @@ def makePlot(context):
     lg.Draw('same')
     
     cratio.Update()
-    cratio.SaveAs('.png')    
-
-    sleep(10)           
+    cratio.SaveAs('.png')
+    sleep(5)    
 #-----------------------------------------------------------------------------
 def main():
     print "\n\t<=== plotWorkspace.py ===>"
@@ -413,15 +425,14 @@ def main():
             context.kappa = kappa
             context.interf= 'constructive'
             makePlot(context)
-
-            waitForKey("\n\t**hit any key to continue ")
             
             for ii in xrange(kappa.size()):
                 kappa[ii] =-KAPPA[model][ii]
             context.kappa = kappa
             context.interf= 'destructive'                
             makePlot(context)
-            sleep(4)
+            
+    sleep(10)
 #-----------------------------------------------------------------------------
 try:
     main()

@@ -13,9 +13,10 @@ class QCDSpectrum : public RooAbsReal
  public:
  QCDSpectrum() : RooAbsReal() {}
   QCDSpectrum(const char* namen, const char* title,
-	      std::string _histdir, std::string _histname, 
-	      std::string _filename="qcd.root",
+	      std::string _histdir, std::string _histname,
+	      int nbins=0, double ptmin=0,
 	      std::string _prefix="");
+  
   QCDSpectrum(const QCDSpectrum& other, const char* newname=0);
   ~QCDSpectrum() {}
 
@@ -39,11 +40,13 @@ class QCDSpectrum : public RooAbsReal
  private:
   std::string histdir_;
   std::string histname_;
-  std::string filename_;
 
+  int nbins_;
+  double ptmin_;
+  
   std::vector<double> y;
   std::vector<double> pt;
-
+  
   TH1D* xsec;
 
   void get(std::string histdir, 

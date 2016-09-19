@@ -6,6 +6,8 @@
 // Created: 11-Nov-2014 Harrison B. Prosper
 //          09-Feb-2015 HBP add setNumber to allowing picking individual
 //                      likelihoods from the ensemble of likelihoods.
+//          18-Sep-2016 HBP in setBinRange, use ROOT convention and start
+//                      bin count at one
 //---------------------------------------------------------------------------
 #include "RooAbsPdf.h"
 #include "RooAbsReal.h"
@@ -49,7 +51,7 @@ public:
   ///
   void bootstrap(bool yes=true);
 
-  ///
+  /// Set bin range (with first bin number = 1 as in Root convention).
   void setBinRange(int first=-1, int last=-1);
 
   ///

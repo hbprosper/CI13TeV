@@ -32,11 +32,16 @@ void error(string program, string message)
 int CISpectrum::histid=0;
 
 CISpectrum::CISpectrum(const char* _name, const char* _title,
-		       string hdir, string hname, string fname, string prefix)
+		       string hdir, string hname, 
+		       int nbins,
+		       double ptmin,
+		       string prefix,
+		       string fname)
   : RooAbsReal(_name, _title),
     histdir_(hdir),
     histname_(hname),
-    filename_(fname),
+    nbins_(nbins),
+    ptmin_(ptmin),    
 
     bi(vector<vector<double> >()),
     aig(vector<vector<double> >()),
@@ -51,6 +56,7 @@ CISpectrum::CISpectrum(const char* _name, const char* _title,
     ai4(vector<vector<double> >()),
 
     pt(vector<double>()),
+
     xsec(0),
     which(0)
 {
@@ -104,7 +110,8 @@ CISpectrum::CISpectrum(const CISpectrum& other, const char* newname)
   : RooAbsReal(other, newname),
     histdir_(other.histdir_),
     histname_(other.histname_),
-    filename_(other.filename_),
+    nbins_(other.nbins_),
+    ptmin_(other.ptmin_),
 
     bi(other.bi),
     aig(other.aig),
@@ -182,11 +189,19 @@ void CISpectrum::init(string rootfile,
     error("CISpectrum", 
 		 string("can't get histogram ") + hname);
   int nbins = hh->GetNbinsX();
+  int offset= 1;
+  if ( nbins_ > 0 )
+    {
+      nbins = nbins_;
+      offset= hh->FindBin(ptmin_+1);
+    }
 
   for(int ii=0; ii < nbins; ii++)
-    pt.push_back(hh->GetBinLowEdge(ii+1));
-  pt.push_back(pt.back()+hh->GetBinWidth(nbins));
-
+    {
+      pt.push_back(hh->GetBinLowEdge(offset+ii));
+    }
+  pt.push_back(pt.back()+hh->GetBinWidth(offset+nbins-1));
+  
   // initialize internal buffers
   for(int ii=0; ii < nbins; ii++)
     {
@@ -236,14 +251,20 @@ void CISpectrum::get(string hdir,
 	error("CISpectrum", 
 		     string("can't get histogram ") + hname);
       int nbins = hh->GetNbinsX();
+      int offset= 1;
+      if ( nbins_ > 0 )
+	{
+	  nbins = nbins_;
+	  offset= hh->FindBin(ptmin_+1);
+	}
 
       // fill internal buffer
       if ( is7TeV )
 	for(int ii=0; ii < nbins; ii++)
-	  h[ii][c] = hh->GetBinContent(ii+1) * scale;
+	  h[ii][c] = hh->GetBinContent(offset+ii) * scale;
       else
 	for(int ii=0; ii < nbins; ii++)    
-	  h[ii][c] = hh->GetBinContent(ii+1);
+	  h[ii][c] = hh->GetBinContent(offset+ii);
     }
 }
 

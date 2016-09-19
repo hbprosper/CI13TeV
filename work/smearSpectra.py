@@ -38,6 +38,7 @@ DATAFILENAME  = '../data/data_13TeV_L000.07152ifb.root'
 JECUNFILENAME = '../data/Summer15_50nsV5_DATA_Uncertainty_AK8PF.root'
 EWKFILENAME   = '../data/ElectroWeakCorrection.root'
 EWKHISTNAME   = 'histo'
+JERUNCERTAINTY= 0.1  # 10% relative uncertainty in jet energy resolution
 #-----------------------------------------------------------------------------
 LUMI = 71.52 # 1/pb
 #-----------------------------------------------------------------------------
@@ -47,7 +48,7 @@ def decodeCommandLine():
     python smearSpectra.py [options] <pathname to unsmeared spectra>
 
     options
-       -s<smearing>   jes+jer, jes+jer+pdf [default=jes+jer+pdf]
+       -s<smearing>   pdf, jec, jecpdf [default=jecpdf]
     '''
     parser = optparse.OptionParser(usage=USAGE,
                                    version=VERSION)
@@ -55,7 +56,7 @@ def decodeCommandLine():
                       action='store',
                       dest='smearing',
                       type='string',
-                      default='jes+jer+pdf',
+                      default='jecpdf',
                       help='level of smearing to apply')
     options, args = parser.parse_args()
     if len(args) == 0:
@@ -84,8 +85,8 @@ def main():
     print "\n\t<=== smearSpectra.py ===>"
     
     smearingLevel, PDFdir = decodeCommandLine()
-    doJESJER = True
-    doPDF    = find(smearingLevel, 'P') > -1
+    doJEC = find(smearingLevel, 'J') > -1
+    doPDF = find(smearingLevel, 'P') > -1
 
     cmd = '(?<=%s/)[0-9]+' % PDFdir
     getPDFmember = re.compile(cmd)
@@ -95,29 +96,36 @@ def main():
     
     setStyle()
 
-    if  doPDF:
+    if  doPDF and not doJEC:
         # --------------------------------------------------------------------
-        # if doPDF is true, assume that we wish to
-        # include JES, JER, and PDF uncertainties, in
-        # which case we use all PDF members and
+        # do PDF smearing only
+        # --------------------------------------------------------------------
+        member   = '*'
+        histnames= HISTNAMES
+        nsmears  = 1
+        prefix   = 'PDF'
+                
+    elif doJEC and not doPDF:
+        # --------------------------------------------------------------------
+        # do JES and JER smearing only.
+        # use PDF member zero, with mur=muf=1
+        # and sample JES, JER 1000 times.
+        # --------------------------------------------------------------------
+        member   = '000'
+        histnames= ['nlo_1.000_1.000']
+        nsmears  = 1000
+        prefix   = 'JEC'
+        
+    else:
+        # --------------------------------------------------------------------
+        # do PDF, JES and JER smearing.
+        # use all PDF members and
         # for each sample JES and JER ONCE.
         # --------------------------------------------------------------------
         member   = '*'
         histnames= HISTNAMES
         nsmears  = 1
-        prefix   = 'JESJERPDF'
-        
-    else:
-        # --------------------------------------------------------------------
-        # doPDF is false, so assume that we wish to
-        # include JES and JER uncertainties only, in which
-        # case we use member zero, with mur=muf=1
-        # and sample JES, JER 500 times.
-        # --------------------------------------------------------------------
-        member   = '000'
-        histnames= ['nlo_1.000_1.000']
-        nsmears  = 500
-        prefix   = 'JESJER'
+        prefix   = 'JECPDF'
                 
     # ------------------------------------------------------------------------
     # get input rootfiles and construct output file names
@@ -149,8 +157,9 @@ def main():
     print "\tnumber of smearings:     %d" % nsmears
     print "\thistograms to smear:     %s" % histnames
     
-    if doJESJER:
+    if doJEC:
         print "\tinclude JES+JER uncertainties"
+        
     if doPDF:
         print "\tinclude PDF uncertainties"
         
@@ -169,7 +178,7 @@ def main():
                     "can't open file %s" % JECUNFILENAME)
         
     JESunc = JECUncertainty(JECUNFILENAME)
-    JERunc = 0.1 # assume a flat 10% uncertainty in JER
+    JERunc = JERUNCERTAINTY
     
     # get electroweak corrections
     if not os.path.exists(EWKFILENAME):
@@ -203,13 +212,15 @@ def main():
     if not hdfile.IsOpen():
         hutil.error('smearSpectra.py',
                     "can't open file %s" % DATAFILENAME)
-    hdata  = hdfile.Get('hdata')
+    hdata = hdfile.Get('hdata')
     hdata.GetYaxis().SetTitle('#sigma / bin (pb)')
     hdata.Scale(1.0/LUMI)
+    nbins = hdata.GetNbinsX()
     pT = hutil.binlowedges(hdata)
-    pT.append(pT[-1]+hdata.GetBinWidth(len(pT)))
+    pT.push_back(pT.back()+hdata.GetBinWidth(nbins))
 
-    print "\n\t==> pT_min: %6.1f\tpT_max: %6.1f\n" % (pT[0], pT[-1])
+    print "\n\t==> bins = %4d,  "\
+      "pT-range = (%-6.1f... %-6.1f) GeV\n" % (nbins, pT[0], pT[-1])
     
     # --------------------------------------------------------
     # loop over files and smear selected histograms within
@@ -237,27 +248,39 @@ def main():
         hfile = TFile(outfiles[index], 'recreate')
         hist = []
         for histname in histnames:
+            
             spectrum = JetSpectrum(rootfile, histname, fastNLO, doNPcor, hEWK)
             
             for ii in xrange(nsmears):
-                # get the correct mapping between
-                # (PDFmember, mur, muf) and (x, y)
-                key = '%s/%s/%3.3d' % (member, histname, ii)
-                if variates.has_key(key):
-                    x, y = variates[key]
-                else:
-                    x, y = nxy[jxy]
-                    jxy += 1
-                    variates[key] = (x, y)
-
-                sspectrum = JetSpectrumSmeared(spectrum,
-                                               JESunc,
-                                               JERunc,
-                                               x, y)
 
                 hname = '%s_%3.3d' % (histname, ii)
-                hfile.cd()
-                h = makePlot(hname, sspectrum, pT, kBlue)
+                
+                if doJEC:
+                    # apply jet energy correction smearing.
+                    #
+                    # get the correct mapping between
+                    # (PDFmember, mur, muf) and (x, y)
+                    key = '%s/%s/%3.3d' % (member, histname, ii)
+                    if variates.has_key(key):
+                        x, y = variates[key]
+                    else:
+                        x, y = nxy[jxy]
+                        jxy += 1
+                        variates[key] = (x, y)
+
+                    sspectrum = JetSpectrumSmeared(spectrum,
+                                                   JESunc,
+                                                   JERunc,
+                                                   x, y)
+                    hfile.cd()
+                    # create histogram containing cross sections/bin
+                    h = makePlot(hname, sspectrum, pT, kBlue)
+                else:
+                    # no jet energy correction smearing
+                    hfile.cd()
+                    h = makePlot(hname,  spectrum, pT, kBlue)
+                    
+                # cache histograms so that they aren't deleted
                 hist.append(h)
 
                 cspect.cd()
@@ -269,8 +292,14 @@ def main():
                     gPad.SetLogy(kFALSE)
                     h.Draw('c')
                 cspect.Update()
-            del spectrum
-            del sspectrum
+            try:
+                del spectrum
+            except:
+                pass
+            try:
+                del sspectrum
+            except:
+                pass
         hfile.Write()
         hfile.Close()
     sleep(5)

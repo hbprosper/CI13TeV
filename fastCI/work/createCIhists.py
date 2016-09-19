@@ -27,8 +27,8 @@ _2.000_2.000
 HISTNAMES = split(strip(HISTNAMES))
 MURMUF = [0, 3, 1, 4, 7, 5, 8]
 #-----------------------------------------------------------------------------
-def getBins():    
-    filename = '%s/data/bins.txt' % CIPATH    
+def getBins(filename='bins.txt'):    
+    filename = '%s/data/%s' % (CIPATH, filename)    
     records  = map(lambda x: map(atof, x),
                    map(split, open(filename).readlines()))
     pt = array('d')
@@ -36,7 +36,7 @@ def getBins():
         pt.append(ptlow)
     ptlow, pthigh = records[-1]
     pt.append(pthigh)
-    print "\t==> pT_min: %5.1f\tpT_max: %6.1f" % (pt[0], pt[-1])
+    print "\t==> pT-range = (%-6.1f ... %-6.1f) GeV" % (pt[0], pt[-1])
     return pt
 
 def makeHist(hname, name, pt, data):

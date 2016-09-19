@@ -127,14 +127,12 @@ def main():
             if not hfile.IsOpen():
                 hutil.error("plotCIcoeff.py",
                             "can't open rootfile %s" % rootfile)
-            print rootfile
             
             histnames = filter(lambda x: x[:3] == 'nlo',
                                hutil.histogramNames(hfile))
             canvas.cd(kk+1)
             option = 'l'
             for histname in histnames:
-                print "\t%s" % histname
                 h = hfile.Get(histname)
                 fixhist2(h)
                 tdir.cd()
@@ -151,7 +149,6 @@ def main():
                 cbi42.cd()
                 option = 'l'
                 for histname in histnames:
-                    print "\t%s" % histname
                     h = hfile.Get(histname)
                     fixhist2(h)
                     tdir.cd()

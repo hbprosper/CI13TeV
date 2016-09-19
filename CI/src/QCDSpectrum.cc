@@ -29,12 +29,14 @@ void error(string program, string message)
 int QCDSpectrum::histid=0;
 			 
 QCDSpectrum::QCDSpectrum(const  char* _name, const char* _title,
-			 string hdir, string hname, string fname,
+			 string hdir, string hname, 
+			 int nbins, double ptmin,
 			 string prefix)
   : RooAbsReal(_name, _title),
     histdir_(hdir),
     histname_(hname),
-    filename_(fname),
+    nbins_(nbins),
+    ptmin_(ptmin),    
     y(vector<double>()),
     pt(vector<double>()),
     xsec(0)
@@ -59,7 +61,8 @@ QCDSpectrum::QCDSpectrum(const QCDSpectrum& other, const  char* newname)
   : RooAbsReal(other, newname),
     histdir_(other.histdir_),
     histname_(other.histname_),
-    filename_(other.filename_),
+    nbins_(other.nbins_),
+    ptmin_(other.ptmin_),    
     y(other.y),
     pt(other.pt),
     xsec(other.xsec)
@@ -87,7 +90,7 @@ void QCDSpectrum::get(string hdir,
 {
   // open root file
   char filename[80];
-  sprintf(filename, "%s/%s", hdir.c_str(), filename_.c_str());
+  sprintf(filename, "%s/qcd.root", hdir.c_str());
   TFile hfile(filename);
   if ( ! hfile.IsOpen() )
     error("QCDSpectrum", 
@@ -101,12 +104,18 @@ void QCDSpectrum::get(string hdir,
 
   // fill internal buffer
   int nbins = hh->GetNbinsX();
+  int offset= 1;
+  if ( nbins_ > 0 )
+    {
+      nbins = nbins_;
+      offset= hh->FindBin(ptmin_+1);
+    }
   for(int ii=0; ii < nbins; ii++)
     {
-      h.push_back(hh->GetBinContent(ii+1));
-      pt.push_back(hh->GetBinLowEdge(ii+1));
+      h.push_back(hh->GetBinContent(offset+ii));
+      pt.push_back(hh->GetBinLowEdge(offset+ii));
     }
-  pt.push_back(pt.back()+hh->GetBinWidth(nbins));
+  pt.push_back(pt.back()+hh->GetBinWidth(offset+nbins-1));
 }
 
 int QCDSpectrum::count(TFile* hfile, string prefix)
