@@ -19,10 +19,10 @@ from ROOT import *
 EXPECTED = True    # if true compute expected limits
 ENERGY   = 13      # TeV
 LUMI     =   71.5  # 1/pb
-LUMI     =30000.0
-BINMIN   = 5
+#LUMI     =30000.0
+BINMIN   = 1
 LMIN     = 0.0     # lower limit of lambda = 1/Lambda^2
-LMAX     = 0.010   # upper limit of lambda
+LMAX     = 0.020   # upper limit of lambda
 YMAX     = 0.060   # maximum Y limit of posterior density plot
 WSPACE   = 'CI'    # name of workspace
 
