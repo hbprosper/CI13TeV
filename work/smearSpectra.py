@@ -48,7 +48,8 @@ def decodeCommandLine():
     python smearSpectra.py [options] <pathname to unsmeared spectra>
 
     options
-       -s<smearing>   pdf, jec, jecpdf [default=jecpdf]
+       -s<smearing>   pdf, jec, jecpdf [jecpdf]
+       -m<member>     PDF member       [*]
     '''
     parser = optparse.OptionParser(usage=USAGE,
                                    version=VERSION)
@@ -58,13 +59,20 @@ def decodeCommandLine():
                       type='string',
                       default='jecpdf',
                       help='level of smearing to apply')
+
+    parser.add_option('-m', '--member',
+                      action='store',
+                      dest='member',
+                      type='string',
+                      default='*',
+                      help='PDF member')    
     options, args = parser.parse_args()
     if len(args) == 0:
         print USAGE
         sys.exit(0)
     PDFdir = args[0]
     if PDFdir[-1] == '/': PDFdir=PDFdir[:-1]
-    return (upper(options.smearing), PDFdir)
+    return (upper(options.smearing), PDFdir, options.member)
 #-----------------------------------------------------------------------------
 def makePlot(hname, spectrum, pt, COLOR=kBlue):
     x = array('d')
@@ -84,7 +92,7 @@ def makePlot(hname, spectrum, pt, COLOR=kBlue):
 def main():
     print "\n\t<=== smearSpectra.py ===>"
     
-    smearingLevel, PDFdir = decodeCommandLine()
+    smearingLevel, PDFdir, PDFmember = decodeCommandLine()
     doJEC = find(smearingLevel, 'J') > -1
     doPDF = find(smearingLevel, 'P') > -1
 
@@ -122,7 +130,8 @@ def main():
         # use all PDF members and
         # for each sample JES and JER ONCE.
         # --------------------------------------------------------------------
-        member   = '*'
+        member   = PDFmember
+        if member != '*': member = '%3.3d' % atoi(member)
         histnames= HISTNAMES
         nsmears  = 1
         prefix   = 'JECPDF'
