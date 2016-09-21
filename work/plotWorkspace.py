@@ -16,8 +16,8 @@ gSystem.Load("libCI.so")
 from ROOT import hutil
     
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
-YMIN    = 1.0e-10
-YMAX    = 1.0e+8
+YMIN    = 1.0e-5  # minimum and maximum y-limits for spectrum
+YMAX    = 2.0
 #                        kappa
 #                   1   2   3   4   5   6
 KAPPA   = {'LL' : [-1,  0,  0,  0,  0,  0],
@@ -129,7 +129,7 @@ def makePlot(context):
     # determine nature of smearing 
     # --------------------------------------------------------    
     dirname = qcdspectrum[0].dirname()
-    smearing = getsmearing.findall(dirname)[0]
+    smearing= getsmearing.findall(dirname)[0]
     
     if smearing == 'JEC':
         label  = 'JEC uncertainties only'
@@ -212,7 +212,7 @@ def makePlot(context):
     xsect = hqcdnom.Integral()
     scale = xdata / xsect
     print "\n==> data/theory: %10.2f\n" % scale
-    
+
     # compute percentile spectra
     curve = []
     for p in PERCENT: curve.append( pc(p) )
@@ -269,7 +269,7 @@ def makePlot(context):
     # --------------------------------------------------------
     # now plot the ratio
     # --------------------------------------------------------
-    cratio = TCanvas('figures/%s/%s_xsection_ratio%s' % (dirname,
+    cratio = TCanvas('figures/%s/%s_xsection_ratio_%s' % (dirname,
                                                          prefix, postfix),
                      '%s - xsection-ratio' % dirname,
                      515, 10, 500, 500)
@@ -380,6 +380,10 @@ def main():
     hdata.SetMarkerStyle(20)
     hutil.divideByWidth(hdata)
     hdata.Scale(1.0/LUMI)
+
+    ymin = hdata.SetMinimum(YMIN)
+    ymax = hdata.SetMaximum(YMAX)
+    
     pT = hutil.binlowedges(hdata)
     pT.push_back(pT[-1]+hdata.GetBinWidth(nbins))
 

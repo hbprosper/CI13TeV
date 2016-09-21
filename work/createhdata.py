@@ -63,6 +63,7 @@ def main():
 
     hdata = TH1D('hdata', '', len(y), pt)
     hdata.SetMaximum(1e4)
+    hdata.SetAxisRange(500, 3000)
     hdata.GetYaxis().SetTitle('count / bin')
     hdata.GetYaxis().SetTitleOffset(1.6)
     hdata.SetNdivisions(505, "Y")

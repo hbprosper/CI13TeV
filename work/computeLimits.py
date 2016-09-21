@@ -20,7 +20,8 @@ EXPECTED = True    # if true compute expected limits
 ENERGY   = 13      # TeV
 LUMI     =   71.5  # 1/pb
 #LUMI     =30000.0
-BINMIN   = 1
+BINMIN   =  3      # corresponds to  686 GeV
+BINMAX   = 19      # corresponds to 2000 GeV
 LMIN     = 0.0     # lower limit of lambda = 1/Lambda^2
 LMAX     = 0.020   # upper limit of lambda
 YMAX     = 0.060   # maximum Y limit of posterior density plot
@@ -142,7 +143,7 @@ def main():
     if len(argv) == 0:
         print '''
     Usage:
-         ./computeLimits.py <workspace-file> [model = LL, RR, etc.]
+         ./computeLimits.py <workspace-file> [LL RR etc.]
         '''
         sys.exit(0)
         
@@ -190,7 +191,7 @@ def main():
     # first bin is 1 and last is nbins
     # --------------------------------------
     binmin = BINMIN
-    binmax = nbins
+    binmax = BINMAX
     model.setBinRange(binmin, binmax)
          
     print "="*80
