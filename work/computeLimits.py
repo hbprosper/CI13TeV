@@ -19,9 +19,9 @@ from ROOT import *
 EXPECTED = True    # if true compute expected limits
 ENERGY   = 13      # TeV
 LUMI     =   71.5  # 1/pb
-LUMI     = 30000.0
-BINMIN   =  8      # corresponds to  638 GeV
-BINMAX   = 26      # corresponds to 2000 GeV
+#LUMI     = 30000.0
+BINMIN   =  2      # corresponds to  638-686 GeV
+BINMAX   = 19      # corresponds to 1890-2000 GeV
 LMIN     = 0.0     # lower limit of lambda = 1/Lambda^2
 LMAX     = 0.020   # upper limit of lambda
 YMAX     = 0.060   # maximum Y limit of posterior density plot
