@@ -3,7 +3,8 @@
 // ---------------------------------------------------------------------------
 // file: JetSpectrumSmeared.h
 // HBP 2012 - 2014
-// Updated: 23-Jun-2016 HBP use JECUncertainty 
+// Updated: 23-Jun-2016 HBP use JECUncertainty
+//          28-Sep-2016 HBP fix upper pT limit bug in constructor.
 // ---------------------------------------------------------------------------
 #include <vector>
 #include <string>
@@ -33,8 +34,8 @@ class JetSpectrumSmeared
 		     double JERunc_=0.1,
 		     double x_=0, double y_=0,
 		     double pTmin_=500.0,
-		     double pTmax_=2800.0,
-		     int npT_=46);
+		     double pTmax_=3000.0,
+		     int npT_=50);
 
   JetSpectrumSmeared(const JetSpectrumSmeared&);
 

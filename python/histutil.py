@@ -441,7 +441,7 @@ def mkpline(xx, y1, y2, boundary, **args):
         ymax = boundary.GetMaximum()
     else:
         xmin, xmax, ymin, ymax = boundary
-
+    
     np = gPad.ClipPolygon(np, x, y, npp, xc, yc, xmin, ymin, xmax, ymax)
     pl = TPolyLine(np, xc, yc)
     pl.SetLineColor(color)

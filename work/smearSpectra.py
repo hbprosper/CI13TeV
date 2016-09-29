@@ -227,10 +227,11 @@ def main():
     nbins = hdata.GetNbinsX()
     pT = hutil.binlowedges(hdata)
     pT.push_back(pT.back()+hdata.GetBinWidth(nbins))
-
+    pTmin = pT[0]
+    pTmax = pT[-1]
     print "\n\t==> bins = %4d,  "\
-      "pT-range = (%-6.1f... %-6.1f) GeV\n" % (nbins, pT[0], pT[-1])
-    
+      "pT-range = (%-6.1f... %-6.1f) GeV\n" % (nbins, pTmin, pTmax)
+
     # --------------------------------------------------------
     # loop over files and smear selected histograms within
     # each file

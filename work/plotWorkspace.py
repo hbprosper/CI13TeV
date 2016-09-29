@@ -269,7 +269,7 @@ def makePlot(context):
     # --------------------------------------------------------
     # now plot the ratio
     # --------------------------------------------------------
-    cratio = TCanvas('figures/%s/%s_xsection_ratio_%s' % (dirname,
+    cratio = TCanvas('figures/%s/%s_xsection%s_ratio' % (dirname,
                                                          prefix, postfix),
                      '%s - xsection-ratio' % dirname,
                      515, 10, 500, 500)

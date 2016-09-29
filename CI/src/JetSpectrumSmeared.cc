@@ -28,8 +28,6 @@ using namespace ROOT::Math;
 
 namespace {
   const double RELTOL=1.e-4;
-  const double PTMIN = 100;
-  const double PTMAX =3100;
 };
 // ---------------------------------------------------------------------------
 // Inclusive jet spectrum in |y| < 0.5

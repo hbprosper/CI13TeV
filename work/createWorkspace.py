@@ -311,7 +311,7 @@ def main():
               (nb,
                h.GetBinLowEdge(1),
                h.GetBinLowEdge(nb)+h.GetBinWidth(nb))
-        
+
         # also add spectra to probability model
         model.add(qcdspectrum[-1], cispectrum[-1])
 
