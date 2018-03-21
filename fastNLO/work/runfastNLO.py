@@ -94,7 +94,7 @@ def main():
                                          'LO-xsection', 'NLO-xsection')
             out.write('%s\n' % rec)
             ii += 3
-            for jj in xrange(48):
+            for jj in xrange(54):
                 ii += 1
                 record = records[ii]
                 t = split(record)[-6:-1]

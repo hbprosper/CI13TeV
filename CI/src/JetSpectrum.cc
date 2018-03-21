@@ -34,20 +34,19 @@ const double RELTOL=1.e-6;
 // Inclusive jet spectrum in |y| < 0.5
 // ----------------------------------------------------------------------------
 JetSpectrum::JetSpectrum(string filename,
-		   string histname,
-		   bool positive_,
-		   bool applyNPC_,
-		   TH1* hEWKC_)
+			 string histname,
+			 bool positive_,
+			 TH1* hNPC_,
+			 TH1* hEWKC_)
   : ptlo(std::vector<double>()),
     pthi(std::vector<double>()),
     ptcn(std::vector<double>()),
     xsection(std::vector<double>()),
     _positive(positive_),
-    applyNPC(applyNPC_),
+    hNPC(hNPC_),
     hEWKC(hEWKC_),
     nullHist(false)
 {
-  //cout << "==> reading: " << filename << endl;
   TFile hfile(filename.c_str());
   if ( ! hfile.IsOpen() )
     hutil::error("JetSpectrum", "can't open file " + filename);
@@ -69,30 +68,35 @@ JetSpectrum::JetSpectrum(string filename,
     interp = 0;
   else
     {
-      if ( applyNPC )
+      if ( hNPC )
 	{
 	  for(unsigned int c=0; c < ptcn.size(); c++)
 	    xsection[c] = NPC( ptcn[c] ) * xsection[c];
 	}
-      if ( applyEWKC )
+      if ( hEWKC )
 	{
 	  for(unsigned int c=0; c < ptcn.size(); c++)
 	    xsection[c] = EWKC( ptcn[c] ) * xsection[c];
 	}
       if ( _positive )
-	for(unsigned int c=0; c < ptcn.size(); c++)
-	  xsection[c] = log(xsection[c]);
-      interp = new Interpolator(ptcn, xsection, Interpolation::kLINEAR);
+      for(unsigned int c=0; c < ptcn.size(); c++)
+	xsection[c] = log(xsection[c]);
+      interp = new Interpolator(ptcn, xsection);// Interpolation::kLINEAR);
     }
 }
 
 double JetSpectrum::NPC(double pt)
 {
   // from Paolo Gunnellini (2015-12-17)
-  double A =   1.00139;
-  double B = 433.922;
-  double n =   1.67615;
-  return A + B/pow(pt, n);
+  // double A =   1.00139;
+  // double B = 433.922;
+  // double n =   1.67615;
+  // return A + B/pow(pt, n);
+
+   if ( hNPC )
+    return hNPC->Interpolate(pt);
+  else
+    return 1; 
 }
 
 double JetSpectrum::EWKC(double pt)

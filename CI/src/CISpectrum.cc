@@ -41,8 +41,8 @@ CISpectrum::CISpectrum(const char* _name, const char* _title,
     histdir_(hdir),
     histname_(hname),
     nbins_(nbins),
-    ptmin_(ptmin),    
-
+    ptmin_(ptmin),
+    
     bi(vector<vector<double> >()),
     aig(vector<vector<double> >()),
     ai(vector<vector<double> >()),
@@ -139,6 +139,7 @@ TH1D* CISpectrum::operator()(double lambda, vector<double>& kappa)
 						  bi[c],  aig[c],  ai[c], 
 						  bij[c], aijg[c], aij[c],
 						  bi4[c], ai4g[c], ai4[c]);
+
       if      ( which == 0 )
 	xsec->SetBinContent(c+1, xsecs[0]+xsecs[1]);
       else if ( which == 1 )

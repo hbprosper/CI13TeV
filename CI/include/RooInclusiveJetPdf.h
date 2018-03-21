@@ -55,7 +55,8 @@ public:
   void setBinRange(int first=-1, int last=-1);
 
   ///
-  void setAsimov(bool yes=true, double lumi=1000, double l=0);
+  void setAsimov(bool yes=true, double lumi=35100, double l=0,
+		 bool use_average=false);
 
   size_t size() { return qcd.size(); }  
   int    numberOfBins() { return count.getSize(); }

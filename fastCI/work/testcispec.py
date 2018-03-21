@@ -26,40 +26,51 @@ def main():
     for postfix in HISTNAMES:
         hname = 'nlo%s' % postfix
         cinlo.append( CISpectrum(hname, hname, histdir, hname) )
-        print hname
+        pT = cinlo[-1].pT()
+        print hname, histdir, pT[0], pT[-1]
 
-    Lambda = 5.0
+    Lambda = 20.0
     l = 1.0/Lambda**2
     kappa = vector('double')(6, 0)
 
     setStyle()
     c = TCanvas('figs/CT14/fig_CI_Lambda_%2.2d' % int(Lambda), '',
-                10, 10, 800, 400)
+                10, 10, 1000, 500)
     c.Divide(2, 1)
 
+    hdummy = mkhist1('hdummy',
+                         'Jet p_{T} (GeV)',
+                         'd^{2}#sigma/dp_{T}dy',
+                         50, 0, 4000)
+    hdummy.SetMinimum(-3.e-3)
+    hdummy.SetMaximum( 3.e-3)
+    
     color = [kRed, kOrange, kYellow+2, kGreen+1, kBlue, kMagenta, kCyan]
     h = []
-    for i, (k, ymin, ymax) in enumerate([(-1, -0.01, 0.07),
-                                         ( 1, -0.01, 0.07)]):
+    for i, k in enumerate([-1, 1]):
+        kolor = 0
         c.cd(i+1)
-        gPad.SetGrid()        
+        gPad.SetGrid()
+        hdummy.Draw()
         kappa[0] = k
         scribe = Scribe(0.50,0.80)
-        option = 'l'
+        option = 'c same'
         for j, CI in enumerate(cinlo):
             h.append( CI(l, kappa) )
-            h[-1].SetMinimum(ymin)
-            h[-1].SetMaximum(ymax)
-            h[-1].SetLineColor(kBlue)
-            h[-1].SetLineStyle(j+1)
+            h[-1].SetLineWidth(2)
+            h[-1].SetLineColor(color[kolor])
+            #h[-1].SetLineStyle(j+1)
             h[-1].Draw(option)
-            option = 'l same'
-        scribe.write('#sqrt{s} = 13TeV')
-        scribe.write('#Lambda  = %dTeV' % int(Lambda))
-        scribe.write('#kappa  = (%d,0,0,0,0,0)' % k)
+            kolor += 1
+            if kolor >= len(color):
+                kolor = 0
+        scribe.write('#sqrt{s} = 13 TeV')
+        scribe.write('#Lambda  = %d TeV' % int(Lambda))
+        scribe.write('#kappa   = (%d,0,0,0,0,0)' % k)
         c.Update()
+        gSystem.ProcessEvents()
     c.SaveAs('.png')
-    sleep(10)
+    sleep(5)
     
 #------------------------------------------------------------------------------ 
 main()

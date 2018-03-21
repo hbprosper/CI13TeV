@@ -36,7 +36,7 @@ RooInclusiveJetPdf::RooInclusiveJetPdf(const char* name, const char* title,
     ci(vector<CISpectrum>()),
     index(vector<int>()),    
     smallest(numeric_limits<double>::denorm_min()),
-    number(-1),
+    number(-1), // loop over all spectra
     useasimov(false),
     asimov(vector<double>(_count.getSize(), 0)),
     qcdxsect(vector<double>(_count.getSize(), 0)),
@@ -151,8 +151,9 @@ void RooInclusiveJetPdf::bootstrap(bool yes)
     }    
 }
 
-void RooInclusiveJetPdf::setAsimov(bool yes, double lumi, double l)
+void RooInclusiveJetPdf::setAsimov(bool yes, double lumi, double l, bool use_average)
 {
+  // Asimov data set = average[QCD spectrum] or nominal
   useasimov = yes;
   if ( ! useasimov ) return;
 
@@ -161,19 +162,21 @@ void RooInclusiveJetPdf::setAsimov(bool yes, double lumi, double l)
     for(int c=0; c < 6; c++)
       k[c] = dynamic_cast<RooRealVar*>(&kappa[c])->getVal();
 
+  int nqcd = 1; // use nominal qcd spectrum
+  if ( use_average ) nqcd = qcd.size();
+  
   for(size_t ii=0; ii < asimov.size(); ii++)
     {
       double xsec = 0;
-      for(size_t j=0; j < qcd.size(); j++)
+      for(int j=0; j < nqcd; j++)
 	{
 	  int c = index[j];
 	  xsec += qcd[c](ii);
 	  if ( l > 0 ) xsec += ci[c](l, k, ii);
 	}
-      xsec /= qcd.size();
+      xsec /= nqcd;
       asimov[ii] = lumi * xsec;
     }
-  number = -2;
 }
 
 void RooInclusiveJetPdf::initialize(int which)
@@ -262,9 +265,9 @@ double RooInclusiveJetPdf::evaluate() const
 	}
       y = RooInclusiveJetPdf::multinomial(n, p);
     }
-  else if ( number == -1 )
+  else if ( number < 0 )
     {
-      // loop over spectra (number = -1)
+      // loop over all spectra
       for(size_t j=0; j < qcd.size(); j++)
 	{
 	  int c = index[j];
@@ -277,24 +280,24 @@ double RooInclusiveJetPdf::evaluate() const
 	  y += RooInclusiveJetPdf::multinomial(n, p);
 	}
     }
-  else
-    {
-      // compute average spectrum (number = -2, set by setAsimov)
-      int jj = 0;
-      for(int ii=firstbin; ii <= lastbin; ii++)
-	{
-	  double xsec = 0;
-	  for(size_t j=0; j < qcd.size(); j++)
-	    {
-	      int c = index[j];
-	      xsec += qcd[c](ii) + ci[c](l, k, ii);
-	    }
-	  xsec /= qcd.size();
-	  p[jj] = xsec;
-	  jj++;
-	}
-      y = RooInclusiveJetPdf::multinomial(n, p);
-    }
+  // else
+  //   {
+  //     // compute average spectrum (number = -2, set by setAsimov)
+  //     int jj = 0;
+  //     for(int ii=firstbin; ii <= lastbin; ii++)
+  // 	{
+  // 	  double xsec = 0;
+  // 	  for(size_t j=0; j < qcd.size(); j++)
+  // 	    {
+  // 	      int c = index[j];
+  // 	      xsec += qcd[c](ii) + ci[c](l, k, ii);
+  // 	    }
+  // 	  xsec /= qcd.size();
+  // 	  p[jj] = xsec;
+  // 	  jj++;
+  // 	}
+  //     y = RooInclusiveJetPdf::multinomial(n, p);
+  //   }
   
   if ( y != y || y <= 0 ) 
     return 0;

@@ -13,20 +13,21 @@ from time import sleep
 from ROOT import *
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
-CIPATH  = os.environ['CIPATH']
 YMIN    = 1.0e-10
 YMAX    = 1.0e+8
 #-----------------------------------------------------------------------------
 def getBins():    
-    filename = '%s/data/bins.txt' % CIPATH    
-    records  = map(lambda x: map(atof, x),
-                   map(split, open(filename).readlines()))
+    dirname = '../CT14/001'
+    txtfilenames = glob('%s/*.txt' % dirname)
+    txtfilenames.sort()
+    filename = txtfilenames[0]
+    records = map(lambda x: map(atof, x),
+                  map(split, open(filename).readlines()[1:]))
     pt = array('d')
-    for ptlow, pthigh in records:
-        pt.append(ptlow)
-    ptlow, pthigh = records[-1]
+    for ptlow, pthigh, lo, nlo in records: pt.append(ptlow)
+    ptlow, pthigh, lo, nlo = records[-1]
     pt.append(pthigh)
-    print "\n\t==> pT_min: %6.1f\tpT_max: %6.1f\n" % (pt[0], pt[-1])
+    print "\t==> pT_min: %5.1f\tpT_max: %6.1f" % (pt[0], pt[-1])
     return pt
 
 def makeHist(txtfilename, pt, which=1):
@@ -82,6 +83,7 @@ def main():
         PDFindexMax = PDFindexMin
     else:
         PDFindexMin =   0
+#        PDFindexMin =   051
         PDFindexMax = 200
 
     print

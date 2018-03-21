@@ -16,7 +16,7 @@ from string import *
 from glob import glob
 from array import array
 from time import sleep
-from ROOT import gSystem, gPad, TH1D, TFile, TCanvas, kFALSE, kTRUE
+from ROOT import gSystem, gPad, TH1D, TFile, TCanvas, kFALSE, kTRUE, kBlue
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
 CIPATH  = os.environ['CIPATH']
@@ -34,13 +34,14 @@ nlo_2.000_1.000
 nlo_2.000_2.000
 '''
 HISTNAMES = split(strip(HISTNAMES))
-DATAFILENAME  = '../data/data_13TeV_L000.07152ifb.root'
-JECUNFILENAME = '../data/Summer15_50nsV5_DATA_Uncertainty_AK8PF.root'
-EWKFILENAME   = '../data/ElectroWeakCorrection.root'
-EWKHISTNAME   = 'histo'
+DATAFILENAME  = '../data/data_13TeV_L035.1ifb.root'
+JECUNFILENAME = '../data/Summer16_23Sep2016BCDV4_DATA_Uncertainty_AK8PFchs.root'
+CORFILENAME   = '../data/data_13TeV_L035.1ifb_plus_corrections.root'
+EWKCHISTNAME  = 'ak7/y_0.0-0.5/EwkCor'
+NPCHISTNAME   = 'ak7/y_0.0-0.5/NPCor'
 JERUNCERTAINTY= 0.1  # 10% relative uncertainty in jet energy resolution
 #-----------------------------------------------------------------------------
-LUMI = 71.52 # 1/pb
+LUMI = 35100.0 # 1/pb
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
     VERSION = '16-Sep-2016'
@@ -190,18 +191,21 @@ def main():
     JERunc = JERUNCERTAINTY
     
     # get electroweak corrections
-    if not os.path.exists(EWKFILENAME):
+    if not os.path.exists(CORFILENAME):
         hutil.error('smearSpectra.py',
-                    "can't open file %s" % EWKFILENAME)        
-    fEWK = TFile(EWKFILENAME)
-    hEWK = fEWK.Get(EWKHISTNAME)
+                    "can't open file %s" % CORFILENAME)        
+    fCor = TFile(CORFILENAME)
+    hEWK = fCor.Get(EWKCHISTNAME)
     if hEWK == None:
         hutil.error('smearSpectra.py',
-                    "can't get EWK histogram %s" % EWKHISTNAME)
+                    "can't get histogram %s" % EWKCHISTNAME)
 
-    # turn on non-perturbative corrections
-    doNPcor  = True  # non-perturbative corrections
-    
+    # get non-perturbative corrections
+    hNPC = fCor.Get(NPCHISTNAME)
+    if hNPC == None:
+        hutil.error('smearSpectra.py',
+                    "can't gethistogram %s" % HPCHISTNAME)
+        
     # --------------------------------------------------------
     # read normalvariates.
     # we do this so that we maintain the JES/JER correlation
@@ -225,13 +229,15 @@ def main():
     hdata.GetYaxis().SetTitle('#sigma / bin (pb)')
     hdata.Scale(1.0/LUMI)
     nbins = hdata.GetNbinsX()
-    pT = hutil.binlowedges(hdata)
+    pT    = hutil.binlowedges(hdata)
     pT.push_back(pT.back()+hdata.GetBinWidth(nbins))
+
+    # minimum and maximum pTs of smeared spectrum
     pTmin = pT[0]
     pTmax = pT[-1]
     print "\n\t==> bins = %4d,  "\
       "pT-range = (%-6.1f... %-6.1f) GeV\n" % (nbins, pTmin, pTmax)
-
+    
     # --------------------------------------------------------
     # loop over files and smear selected histograms within
     # each file
@@ -259,7 +265,7 @@ def main():
         hist = []
         for histname in histnames:
             
-            spectrum = JetSpectrum(rootfile, histname, fastNLO, doNPcor, hEWK)
+            spectrum = JetSpectrum(rootfile, histname, fastNLO, hNPC, hEWK)
             
             for ii in xrange(nsmears):
 
@@ -281,7 +287,8 @@ def main():
                     sspectrum = JetSpectrumSmeared(spectrum,
                                                    JESunc,
                                                    JERunc,
-                                                   x, y)
+                                                   x, y,
+                                                       pTmin, pTmax)
                     hfile.cd()
                     # create histogram containing cross sections/bin
                     h = makePlot(hname, sspectrum, pT, kBlue)

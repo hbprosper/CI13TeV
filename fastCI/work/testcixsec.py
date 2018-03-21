@@ -59,13 +59,13 @@ def xsection(cixsec, l, kappa, which=1):
 def main():
     gSystem.Load('libCI.so')
     
-    Lambda = 10.0
+    Lambda = 20.0
     l = 1.0/Lambda**2
     kappa = vector('double')(6, 0)
     kappa[0] =-1
 
     histdir = '../CT14/000'
-    bins    = [507, 548, 592, 638, 686, 737]
+    bins    = [737, 2000, 2500, 2941, 3273, 3637]
     cifnames= []
     xsec = {}
     for b in bins:
@@ -73,7 +73,6 @@ def main():
         fname = 'xsec%4.4d.txt' % b
         cmd   = 'cixsec %s %s' % (cname, fname)
         os.system(cmd)
-        
         cifnames.append(cname)
         
         print "\n\t==> %s" % fname
@@ -84,7 +83,6 @@ def main():
                             recs[index][2], recs[index][3]))
 
             print xsec[b][-1]            
-
     # --------------------------------------------------------------------
     cilo = []
     cinlo= []

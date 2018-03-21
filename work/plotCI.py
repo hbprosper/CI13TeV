@@ -51,12 +51,12 @@ def waitForKey(message):
 def decodeCommandLine():
     VERSION = '24-Jun-2016'
     USAGE = '''
-    python plotWorkspace.py [options] <workspace-file>
+    python plotCI.py [options] <workspace-file>
 
     options
-       -m<model>      LL, RR, VV, AA, V-A, QCD     [ALL]
-       -L<Lambda>                                  [20 (TeV)]
-       -r<reference>  median, nominal (QCD)        [nominal]
+       -m<model>      LL, RR, VV, AA, V-A     [ALL]
+       -L<Lambda>                             [20 (TeV)]
+       -r<reference>  median, nominal (QCD)   [nominal]
     '''
     parser = optparse.OptionParser(usage=USAGE,
                                    version=VERSION)
@@ -72,13 +72,13 @@ def decodeCommandLine():
                       action='store',
                       dest='model',
                       type='string',
-                      default='QCD LL RR VV AA V-A',
+                      default='LL RR VV AA V-A',
                       help='model')
         
     options, args = parser.parse_args()
     if len(args) == 0:
-        print USAGE
-        sys.exit(0)
+        sys.exit(USAGE)
+
     filename = args[0]
 
     # Set up model
@@ -102,14 +102,12 @@ def decodeCommandLine():
     return (filename, Lambda, kappa, model, interf)    
 #-----------------------------------------------------------------------------
 def makePlot(context):
-    model    = context.model
-    Lambda   = context.Lambda
-    kappa    = context.kappa
-    interf   = context.interf
-    hdata    = context.hdata
-    pT       = context.pT
-    
-    qcdspectrum = context.qcdspectrum
+    model  = context.model
+    Lambda = context.Lambda
+    kappa  = context.kappa
+    interf = context.interf
+    hqcd   = context.hqcd
+    pT     = context.pT
     cispectrum  = context.cispectrum
     
     print "\n\t<=== %s ===> %s" % (context.model, context.interf)
@@ -121,14 +119,14 @@ def makePlot(context):
     # --------------------------------------------------------
     # number of bins and range
     # --------------------------------------------------------    
-    nbins  = hdata.GetNbinsX()
-    pTLOW  = hdata.GetBinLowEdge(1)
-    pTHIGH = hdata.GetBinLowEdge(nbins)+hdata.GetBinWidth(nbins)
+    nbins  = hqcd.GetNbinsX()
+    pTLOW  = hqcd.GetBinLowEdge(1)
+    pTHIGH = hqcd.GetBinLowEdge(nbins)+hqcd.GetBinWidth(nbins)
         
     # --------------------------------------------------------
     # determine nature of smearing 
     # --------------------------------------------------------    
-    dirname = qcdspectrum[0].dirname()
+    dirname = cispectrum[0].dirname()
     smearing= getsmearing.findall(dirname)[0]
     
     if smearing == 'JEC':
@@ -140,117 +138,82 @@ def makePlot(context):
     postfix = '_%s' % smearing
 
     # get PDF (directory) name
-    prefix  = nameonly(context.filename)
-    dirname = split(prefix, '_')[0]
-
+    prefix = nameonly(dirname)
+    pdfdir = split(dirname, '/')[2]
     
     # --------------------------------------------------------
     print "="*80
-    addCI = model != 'QCD'
-    if addCI:
-        postfix += '_%s_%3.1f_%s' % (model, Lambda, interf[0])
-    else:
-        postfix += '_QCD'
+    postfix += '_%s_%3.1f_%s' % (model, Lambda, interf[0])
+    pcCI = PercentileCurve(nbins)
+    hCI  = []    
     
-    pcQCD   = PercentileCurve(nbins)
-    pcQCDCI = PercentileCurve(nbins)
-    
-    hQCD    = []
-    hQCDCI  = []
-    
-    for index, QCD in enumerate(qcdspectrum[1:]):
-        hqcd = QCD()
-        hutil.divideByWidth(hqcd) # convert to a density
-        pcQCD.add(hqcd)
-        hQCD.append(hqcd)
-
-        if addCI:
-            CI  = cispectrum[index]
-            hci = CI(lam, kappa)
-            hutil.divideByWidth(hci) # convert to a density
-            
-            hci.Add(hqcd)
-            pcQCDCI.add(hci)
-            hQCDCI.append(hci)
+    for index, CI in enumerate(cispectrum[1:]):
+        hci = CI(lam, kappa)
+        hutil.divideByWidth(hci) # convert to a density
+        pcCI.add(hci)
+        hCI.append(hci)
 
         if index % 1000 == 0:
-            print "%5d" % index, hqcd.GetName()
+            print "%5d" % index, hci.GetName()
     
     # --------------------------------------------------------
     # plot spectrum
     # --------------------------------------------------------
-    os.system('mkdir -p figures/%s' % dirname)
+    os.system('mkdir -p figures/%s' % pdfdir)
     
-    name = 'figures/%s/%s_xsection%s' % (dirname, prefix, postfix)
+    name = 'figures/%s/%s_xsection%s' % (pdfdir, prefix, postfix)
     print
     print name
     cspect = TCanvas(name, name, 10, 10, 500, 500)
     x = map(lambda i: (pT[i+1]+pT[i])/2, range(nbins))
 
     # decide what spectrum is to be plotted
-    if addCI:
-        pc   = pcQCDCI
-        hist = hQCDCI
-    else:
-        pc   = pcQCD
-        hist = hQCD
+    pc   = pcCI
+    hist = hCI 
         
-    # get reference QCD curve.
-    hqcdnom = qcdspectrum[0]()
-    hutil.divideByWidth(hqcdnom) # convert to a density
-    hqcdnom.SetLineColor(kBlue)            
-
-    print
-    n = hdata.GetNbinsX()
-    print "data: bins %d, pT-range = (%-6.1f ... %-6.1f) GeV" % \
-      (n, hdata.GetBinLowEdge(1), hdata.GetBinLowEdge(n)+hdata.GetBinWidth(n))
-    
-    n = hqcdnom.GetNbinsX()
+    n = hqcd.GetNbinsX()
     print "QCD0: bins %d, pT-range = (%-6.1f ... %-6.1f) GeV" % \
-      (n, hqcdnom.GetBinLowEdge(1),
-       hqcdnom.GetBinLowEdge(n)+hqcdnom.GetBinWidth(n))
-       
-    xdata = hdata.Integral()
-    xsect = hqcdnom.Integral()
-    scale = xdata / xsect
-    print "\n==> data/theory: %10.2f\n" % scale
+      (n, hqcd.GetBinLowEdge(1),
+       hqcd.GetBinLowEdge(n)+hqcd.GetBinWidth(n))
 
+    ymin =-2.e-5
+    ymax = 2.e-5
+    hist[0].SetMinimum(ymin)
+    hist[0].SetMaximum(ymax)
+        
     # compute percentile spectra
     curve = []
     for p in PERCENT: curve.append( pc(p) )
-    p95 = mkpline(x, curve[0], curve[-1], hdata, cspect, color=kGreen)
-    p68 = mkpline(x, curve[1], curve[-2], hdata, cspect, color=kYellow)
+    p95 = mkpline(x, curve[0], curve[-1], hist[0], cspect, color=kGreen)
+    p68 = mkpline(x, curve[1], curve[-2], hist[0], cspect, color=kYellow)
     p50 = mkgraph(x, curve[2],
                   "Jet p_{T} (GeV)",
                   "d^{2}#sigma /dp_{T}dy (pb/GeV)",
                   pTmin, pTmax,
-                  ymin=YMIN,
-                  ymax=YMAX,
+                  ymin=ymin, ymax=ymax,
                   color=kRed,
                   lwidth=1)
     p50.SetLineWidth(2)
-    h50 = p50.GetHistogram()
     
     cspect.cd()
-    gPad.SetLogy()
-    hdata.Draw("ep")
+    cspect.SetGrid()
+    p50.Draw('ac')
     p95.Draw('f same')
     p68.Draw('f same')
     p50.Draw('c same')
-    hqcdnom.Draw('c same')
-    hdata.Draw("ep same")
+    hqcd.Draw('c same')
 
+    bigtab = ' '*6
     energy = context.energy
     lumi   = context.lumi
-    scribe = addTitle('CMS Preliminary  #surds=%sTeV L=%s/fb' % \
-                      (energy, lumi),
+    scribe = addTitle('%sCMS Preliminary  #surds=%sTeV L=%s/fb' % \
+                      (' '*10, energy, lumi),
                       0.035)
     scribe.vspace()
-    if addCI:
-        scribe.write("%s(#Lambda = %3.1f TeV) %s" % (model,
+    scribe.write("%s(#Lambda = %3.1f TeV) %s" % (model,
                                                      Lambda,
                                                      interf), 0.05)
-    scribe.write(PDFS[dirname], 0.07)
+    scribe.write(PDFS[pdfdir], 0.07)
     scribe.write(label, 0.11)
 
     xp = 0.70
@@ -258,11 +221,10 @@ def makePlot(context):
     xw = 0.18
     yw = 0.24
     lg = mklegend(xp, yp, xw, yw)
-    lg.AddEntry(hdata, 'data', 'p')
-    lg.AddEntry(hqcdnom, 'QCD', 'l')
-    lg.AddEntry(p50, 'median', 'l')
-    lg.AddEntry(p68, '68%s' % '%', 'f')
-    lg.AddEntry(p95, '95%s' % '%', 'f')
+    lg.AddEntry(hqcd, 'QCD', 'l')
+    lg.AddEntry(p50,  'median', 'l')
+    lg.AddEntry(p68,  '68%s' % '%', 'f')
+    lg.AddEntry(p95,  '95%s' % '%', 'f')
     lg.Draw('same')
     
     cspect.Update()
@@ -272,74 +234,54 @@ def makePlot(context):
     # --------------------------------------------------------
     # now plot the ratio
     # --------------------------------------------------------
-    cratio = TCanvas('figures/%s/%s_xsection%s_ratio' % (dirname,
+    cratio = TCanvas('figures/%s/%s_xsection%s_ratio' % (pdfdir,
                                                          prefix, postfix),
                      '%s - xsection-ratio' % dirname,
                      515, 10, 500, 500)
 
-    #hqcdnom.Scale(scale)
-    hratio = hdata.Clone('hratio')
-    hratio.Divide(hqcdnom)
-    hratio.SetMinimum(0.0)
-    hratio.SetMaximum(3.0)
 
-    title = 'data / QCD_{NLO}#otimesNP#otimesEWK'
-    hratio.GetYaxis().SetTitle(title)
-
-    cratio.cd()
-    hratio.Draw('ep')
-    cratio.Update()
-    gSystem.ProcessEvents()
-    
+    title = 'CI / QCD_{NLO}#otimesNP#otimesEWK'
     color = [kRed, kOrange, kGreen, kBlue, kMagenta]
     pc  = PercentileCurve(nbins)
     jj = 0
     for ii, h in enumerate(hist):
-        h.Divide(hqcdnom)
+        h.Divide(hqcd)
         pc.add(h)
 
     curve = []
     for p in PERCENT: curve.append( pc(p) )
-    p95r = mkpline(x, curve[0], curve[-1], hratio, cratio, color=kGreen)
-    p68r = mkpline(x, curve[1], curve[-2], hratio, cratio, color=kYellow)
+
+    ymin = 0.0
+    ymax = 3.0
+    hist[0].SetMinimum(ymin)
+    hist[0].SetMaximum(ymax)
+    p95r = mkpline(x, curve[0], curve[-1], hist[0], cratio, color=kGreen)
+    p68r = mkpline(x, curve[1], curve[-2], hist[0], cratio, color=kYellow)
     p50r = mkgraph(x, curve[2],
                    "Jet p_{T} (GeV)", title,
                    pTmin, pTmax,
-                   ymin=0,
-                   ymax=3,
+                   ymin=ymin, ymax=ymax,
                    color=kRed,
                    lwidth=1)
-
-    xx = array('d'); xx.append(pTmin); xx.append(pTmax)
-    yy = array('d'); yy.append(1); yy.append(1)
-    qcdr = TGraph(2, xx, yy)
-    qcdr.SetLineWidth(2)
-    qcdr.SetLineColor(kBlue)
         
     cratio.cd()
-    gPad.SetLogy(kFALSE)
-    hratio.Draw("ep")
+    cratio.SetGrid()    
+    p50r.Draw('ac')
     p95r.Draw('f same')
     p68r.Draw('f same')
     p50r.Draw('c same')
-    qcdr.Draw('c same')
-    hratio.Draw("ep same")
     
-    scriber = addTitle('CMS Preliminary  #surds=%sTeV L=%s/fb' % \
-                       (energy, lumi),
+    scriber = addTitle('%sCMS Preliminary  #surds=%sTeV L=%s/fb' % \
+                       ('', energy, lumi),
                        0.035)
     scriber.vspace()
-    if addCI:
-        scriber.write("%s(#Lambda=%3.1f TeV) %s" % (model,
+    scriber.write("%s(#Lambda=%3.1f TeV) %s" % (model,
                                                     Lambda,
                                                     interf), 0.04)
-    scriber.write(PDFS[dirname], 0.04)
+    scriber.write(PDFS[pdfdir], 0.04)
     scriber.write(label, 0.04)
-    scriber.write('data / theory = %3.2f' % scale, 0.04)
 
     lg = mklegend(xp, yp, xw, yw)
-    lg.AddEntry(hratio, 'data', 'p')
-    lg.AddEntry(qcdr, 'QCD', 'l')
     lg.AddEntry(p50r, 'median', 'l')
     lg.AddEntry(p68r, '68%s' % '%', 'f')
     lg.AddEntry(p95r, '95%s' % '%', 'f')
@@ -367,80 +309,68 @@ def main():
     # --------------------------------------------------------        
     print "\nloading workspace..."
     # --------------------------------------------------------    
-    addCI = model != "QCD"
-    qcdspectrum = []
-    cispectrum  = []
     hfile = TFile(filename)
     ws = hfile.Get('CI')
     check(ws, "can't get workspace CI")
 
     # --------------------------------------------------------      
-    # get data
-    # --------------------------------------------------------
-    hdata = ws.obj('hdata')
-    check(hdata, "can't get hdata")
-    nbins   = hdata.GetNbinsX()
-    hdata.GetXaxis().SetTitle('Jet p_{T} (GeV)')
-    hdata.GetYaxis().SetTitle('d^{2}#sigma /dp_{T}dy (pb/GeV)')
-    hdata.SetMarkerSize(0.8)
-    hdata.SetMarkerStyle(20)
-    hutil.divideByWidth(hdata)
-    hdata.Scale(1.0/LUMI)
-
-    ymin = hdata.SetMinimum(YMIN)
-    ymax = hdata.SetMaximum(YMAX)
-    
-    pT = hutil.binlowedges(hdata)
-    pT.push_back(pT[-1]+hdata.GetBinWidth(nbins))
-
-    # --------------------------------------------------------      
-    # get model
+    # get model and CI spectra
     # --------------------------------------------------------    
     pdf = ws.pdf('model')
     nspectra = pdf.size()
     print "number of spectra %d" % nspectra
 
+    cispectrum = []
     for ii in xrange(nspectra):
-        qcd = pdf.QCD(ii)
-        if qcd == None: break
-        qcdspectrum.append(qcd)
-
-        if addCI:
-            ci = pdf.CI(ii)
-            if ci == None: break
-            cispectrum.append(ci)
+        ci = pdf.CI(ii)
+        if ci == None: break
+        cispectrum.append(ci)
 
         if ii % 1000 == 0:
-            print "%4d %s %s" % (ii, qcd.dirname(), qcd.histname())
+            print "%4d %s %s" % (ii, ci.dirname(), ci.histname())
 
+    context.cispectrum  = cispectrum
+
+    # --------------------------------------------------------      
+    # get nominal QCD spectrum
+    # --------------------------------------------------------
+    hqcd = pdf.QCD(0)()
+    check(hqcd, "can't get hqcd")
+    nbins   = hqcd.GetNbinsX()
+    hqcd.GetXaxis().SetTitle('Jet p_{T} (GeV)')
+    hqcd.GetYaxis().SetTitle('d^{2}#sigma /dp_{T}dy (pb/GeV)')
+    hqcd.SetMarkerSize(0.8)
+    hqcd.SetMarkerStyle(20)
+    hutil.divideByWidth(hqcd) # convert to density
+    ymin = hqcd.SetMinimum(YMIN)
+    ymax = hqcd.SetMaximum(YMAX)
+    pT = hutil.binlowedges(hqcd)
+    pT.push_back(pT[-1] + hqcd.GetBinWidth(nbins))
+
+    context.hqcd = hqcd
+    context.pT = pT
+    
     # --------------------------------------------------------
     # now plot
     # --------------------------------------------------------
-    context.hdata = hdata
-    context.interf= ''    
-    context.pT = pT
-    context.qcdspectrum = qcdspectrum
-    context.cispectrum  = cispectrum
-
     models = split(model)
     print "\nplotting..."
     for model in models:
         context.model = model
-         
-        if context.model == 'QCD':
-            makePlot(context)
-        else:
-            for ii in xrange(kappa.size()):
-                kappa[ii] = KAPPA[model][ii]
-            context.kappa = kappa
-            context.interf= 'constructive'
-            makePlot(context)
-            
-            for ii in xrange(kappa.size()):
-                kappa[ii] =-KAPPA[model][ii]
-            context.kappa = kappa
-            context.interf= 'destructive'                
-            makePlot(context)
+        
+        context.interf= 'constructive'
+        print '\=> interference: %s' % context.interf
+        for ii in xrange(kappa.size()):
+            kappa[ii] = KAPPA[model][ii]
+        context.kappa = kappa
+        makePlot(context)
+
+        context.interf= 'destructive'                        
+        print '\=> interference: %s' % context.interf        
+        for ii in xrange(kappa.size()):
+            kappa[ii] =-KAPPA[model][ii]
+        context.kappa = kappa
+        makePlot(context)
             
     sleep(5)
 #-----------------------------------------------------------------------------

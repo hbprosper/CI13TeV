@@ -27,8 +27,7 @@ _2.000_2.000
 HISTNAMES = split(strip(HISTNAMES))
 MURMUF = [0, 3, 1, 4, 7, 5, 8]
 #-----------------------------------------------------------------------------
-def getBins(filename='bins.txt'):    
-    filename = '%s/data/%s' % (CIPATH, filename)    
+def getBins(filename='../../data/bins.txt'):
     records  = map(lambda x: map(atof, x),
                    map(split, open(filename).readlines()))
     pt = array('d')

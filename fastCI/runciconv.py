@@ -8,10 +8,10 @@ from glob import glob
 from ROOT import *
 from time import sleep
 #------------------------------------------------------------------------------
-PDFSETS = '''
-MMHT   MMHT2014nlo68cl_rand1234
-NNPDF  NNPDF30_nlo_as_0118_1000
-'''
+#PDFSETS = '''
+#MMHT   MMHT2014nlo68cl_rand1234
+#NNPDF  NNPDF30_nlo_as_0118_1000
+#'''
 PDFSETS = '''
 CT14 CT14nlo_rand1234
 '''
@@ -34,6 +34,10 @@ def main():
                 number = getnumber.findall(gridfilename)[0]
                 outfilename = "%s%s/%3.3d/data%s.txt" % \
                   (BASE, pdf, ii, number)
+                print BASE
+                print pdf
+                print ii
+                print number
                 cmd = 'ciconv %s %d %s %s' % (pdfset,
                                               member,
                                               gridfilename,

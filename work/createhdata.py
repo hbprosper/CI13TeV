@@ -3,6 +3,7 @@
 # Make a histogram of the jet count per bin and simultaneously
 # create a table data.tex containing the observed counts
 # Created 18-Dec-2015 @ CERN HBP
+# Updated 25-Oct-2017 @ CERN HBP
 #-------------------------------------------------------------------------------
 import os, sys, re
 from string import *
@@ -11,10 +12,18 @@ from array import array
 from time import sleep
 from ROOT import *
 #-------------------------------------------------------------------------------
-NAME = 'data_13TeV_L000.07152ifb'
+NAME = 'data_13TeV_L035.1ifb'
 INPFILENAME = '../data/%s.txt'  % NAME
 OUTFILENAME = '../data/%s.root' % NAME
 #-------------------------------------------------------------------------------
+def divideByBinWidth(h):
+    for ii in xrange(h.GetNbinsX()):
+        count = h.GetBinContent(ii+1)
+        error = h.GetBinError(ii+1)
+        width = h.GetBinWidth(ii+1)
+        h.SetBinContent(ii+1, count/width)
+        h.SetBinError(ii+1, error/width)
+        
 def main():
     inp = open(INPFILENAME)
     table = '''
@@ -56,14 +65,15 @@ def main():
     # ---------------------------------------------------------------
     # Make and plot histogram
     # ---------------------------------------------------------------
-    L = 71.52 # 1/pb
+    L = 35.1 # 1/fb
 
     setStyle() 
     hfile = TFile(OUTFILENAME, 'recreate')
 
     hdata = TH1D('hdata', '', len(y), pt)
-    hdata.SetMaximum(1e4)
-    hdata.SetAxisRange(500, 3000)
+    hdata.SetMinimum(2)
+    hdata.SetMaximum(2e+6)    
+    hdata.SetAxisRange(700, 4000)
     hdata.GetYaxis().SetTitle('count / bin')
     hdata.GetYaxis().SetTitleOffset(1.6)
     hdata.SetNdivisions(505, "Y")
@@ -76,7 +86,6 @@ def main():
     for ii in xrange(len(y)):
         hdata.SetBinContent(ii+1, y[ii])
         hdata.SetBinError(ii+1, sqrt(y[ii]))
-        print y[ii]
 
     print 'plot...'
     cdata = TCanvas('figures/fig_%s' % NAME, "observed", 10, 10, 500, 500)
@@ -94,12 +103,11 @@ def main():
     # now divide by bin width
     hfile.cd()
     hdata2 = hdata.Clone('hdata2')
-    gSystem.Load('libCI.so')
-    
-    hutil.divideByWidth(hdata2)
+    divideByBinWidth(hdata2)
     hdata2.Scale(1.0/L)
-    hdata2.SetMaximum(2.0)
-    hdata2.GetYaxis().SetTitle('d^{2}#sigma/dp_{T}dy (pb/GeV)')
+    hdata2.SetMinimum(1e-3)
+    hdata2.SetMaximum(1e+3)
+    hdata2.GetYaxis().SetTitle('d^{2}#sigma/dp_{T}dy (fb/GeV)')
 
 
     cdata2 = TCanvas('figures/fig_%s2' % NAME, "observed", 520, 10, 500, 500)
@@ -108,9 +116,10 @@ def main():
     hdata2.Draw('ep')
 
     scribe2 = addTitle('CMS Preliminary  '\
-                       '#surds=13TeV L=%5.2fpb^{-1}' % L,
+                       '#surds=13TeV L=%5.2ffb^{-1}' % L,
                       0.035)
     cdata2.Update()
+    gSystem.ProcessEvents()
     cdata2.SaveAs('.png')
     
     sleep(5)

@@ -18,12 +18,11 @@ from ROOT import *
 #-----------------------------------------------------------------
 EXPECTED = True    # if true compute expected limits
 ENERGY   = 13      # TeV
-LUMI     =   71.5  # 1/pb
-#LUMI     = 30000.0
-BINMIN   =  2      # corresponds to  638-686 GeV
-BINMAX   = 19      # corresponds to 1890-2000 GeV
+LUMI     = 35100.0
+BINMIN   =  1      # corresponds to  737 -
+BINMAX   = 28      # corresponds to 1890-2000 GeV
 LMIN     = 0.0     # lower limit of lambda = 1/Lambda^2
-LMAX     = 0.020   # upper limit of lambda
+LMAX     = 0.025   # upper limit of lambda
 YMAX     = 0.060   # maximum Y limit of posterior density plot
 WSPACE   = 'CI'    # name of workspace
 
@@ -131,7 +130,7 @@ def main():
     # load various codes needed for the
     # calculatioms
     # --------------------------------------
-    gSystem.Load('libCI.so')
+    gSystem.Load('libCI')
 
     # set up some standard graphics style
     setStyle()
@@ -165,6 +164,7 @@ def main():
         
     prefix = nameonly(filename)
     dname  = split(prefix, '_')[0]
+    os.system('mkdir -p figures/%s' % dname)
     
     # --------------------------------------
     # get model etc.
@@ -184,7 +184,7 @@ def main():
         Asimov = model.Asimov()
         for ii in xrange(Asimov.size()):
             print "\t%4d\t%10.1f" % (ii+1, Asimov[ii])
-
+    sys.exit()
     # --------------------------------------
     # set range of bins to use.
     # NOTE: use ROOT bin labeling convention

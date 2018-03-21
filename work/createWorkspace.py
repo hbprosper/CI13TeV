@@ -19,7 +19,10 @@ from ROOT import gSystem, TFile, kFALSE, kTRUE, \
 #-----------------------------------------------------------------------------
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
 CIPATH  = os.environ['CIPATH']
-DATAFILE= '../data/data_13TeV_L000.07152ifb.root'
+YMIN    = 1.0e-8  # minimum and maximum y-limits for spectrum
+YMAX    = 2.0
+LUMI    = 35100.0  # 1/pb
+DATAFILE= '../data/data_13TeV_L035.1ifb.root'
 PDFDIR  = 'CT14'
 NMEMBERS= 200 # number of PDF members/PDF set to use
 #-----------------------------------------------------------------------------
@@ -166,7 +169,7 @@ def main():
             # factorization scales)
             ii = randint(0, len(histnames)-1)
             histname = histnames[ii]
-            spectra[jj] = (qcddir, histname)
+            spectra[jj] = (qcddir, histname)        
     else:
         jj = 0
         for qcddir in QCDdirs:
@@ -272,7 +275,7 @@ def main():
                                ws.set('Nset'),
                                ws.var('lambda'),
                                ws.set('kappaset'))
-
+    
     print "==> saving %d spectra to workspace %s" % (nspectra, wfilename)
 
     hfile = TFile(wfilename, "recreate")
@@ -300,8 +303,8 @@ def main():
             
         name = "CI%5.5d" % index
         cirecords.append(name)
-        cispectrum.append( CISpectrum(name, name, CIdir,
-                                      histname, nbins, ptlow))
+        cispectrum.append(CISpectrum(name, name, CIdir,
+                                        histname, nbins, ptlow))
         if index == 0:
             k = vector('double')(6,0)
             k[0]=-1        
@@ -323,6 +326,15 @@ def main():
     print "==> writing workspace to file: %s" % wfilename
     hfile.Close()
     ws.writeToFile(wfilename, kFALSE)
+
+
+    # check calculation of Asimov dataset
+    model.setAsimov(True, LUMI)
+    print "\n\t== Use Asimov data set (Lumi = %10.1f / pb)" % LUMI
+    Asimov = model.Asimov()
+    for ii in xrange(Asimov.size()):
+        print "\t%4d\t%10.1f" % (ii+1, Asimov[ii])
+         
     print "\tdone!\n"    
 #-----------------------------------------------------------------------------
 try:

@@ -34,8 +34,8 @@ class JetSpectrumSmeared
 		     double JERunc_=0.1,
 		     double x_=0, double y_=0,
 		     double pTmin_=500.0,
-		     double pTmax_=3000.0,
-		     int npT_=50);
+		     double pTmax_=4000.0,
+		     int npT_=100);
 
   JetSpectrumSmeared(const JetSpectrumSmeared&);
 

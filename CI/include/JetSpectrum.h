@@ -28,7 +28,7 @@ class JetSpectrum
   JetSpectrum(std::string filename,
 	      std::string histname,
 	      bool positive_=true,
-	      bool applyNPC_=true,
+	      TH1* hNPC_=0,
 	      TH1* hEWKC_=0);
 
   ~JetSpectrum() {}
@@ -52,9 +52,8 @@ private:
   std::vector<double> xsection;
   ROOT::Math::Interpolator* interp;
   bool _positive;
-  bool applyNPC;
-  bool applyEWKC;
   bool nullHist;
+  TH1*  hNPC;
   TH1*  hEWKC;
 };
 
