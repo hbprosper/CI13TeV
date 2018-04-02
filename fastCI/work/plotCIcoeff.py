@@ -21,7 +21,7 @@ YMAX    = 1.0e+8
 gSystem.Load("libCI.so")
 getname = re.compile('(?<=[0-9]/)[ab].+(?=[._])')
 SQRTS = 13
-MAX   = 25
+COEFF = 'bi42'
 #-----------------------------------------------------------------------------
 def makePlot(hname, spectrum, pt, COLOR=kBlue):
     x = array('d')
@@ -41,8 +41,7 @@ def makePlot(hname, spectrum, pt, COLOR=kBlue):
 def main():
     print "\n\t<=== plotCIcoeff.py ===>"
     setStyle()
-    gStyle.SetLabelSize(0.10, "XYZ")
-    
+
     # --------------------------------------------------------
     argv = sys.argv[1:]
     argc = len(argv)
@@ -61,10 +60,6 @@ def main():
         PDFmin = 0
     PDFmax = PDFmin
     
-    if PDFmin < 0:
-        PDFmin = 0
-        PDFmax = 200
-
     if argc > 2:
         smearDir = '%s/' % argv[2]
     else:
@@ -82,24 +77,12 @@ def main():
     tdir  = TDirectory('CI', 'C')
     hist  = []
     kolor = [kRed, kOrange, kYellow+1, kGreen+1, kBlue, kMagenta]
-
-
-    figname = 'figs/%s/coeff_%dTeV' %  (PDFset, SQRTS)
-    canvas = TCanvas(figname, figname, 10, 10, 1000, 800)
-    canvas.Divide(6,10)
-
-    
-    option = 'l'
-    jcolor=0
-    indices = range(PDFmin, PDFmax+1)
-    shuffle(indices)
-    indices = indices[:MAX]
-    
-    for index in indices:
+    jcolor=0       
+    for index in xrange(PDFmin, PDFmax+1):
         dirname = '../%s/%3.3d/%s' % (PDFset, index, smearDir)
         print dirname
-        rootfiles = glob('%s/*.root' % dirname)
 
+        rootfiles = glob('%s/*.root' % dirname)
         # ----------------------------------------------------
         # sort files
         # ----------------------------------------------------
@@ -112,14 +95,21 @@ def main():
             if not hfile.IsOpen():
                 hutil.error("plotCIcoeff.py",
                             "can't open rootfile %s" % rootfile)
-            print rootfile
-            name = nameonly(split(rootfile,  '/')[-1])
-            #name = getname.findall(rootfile)[0]
+            name = getname.findall(rootfile)[0]
             filelist.append(('%4s' % name, rootfile))
         filelist.sort()
+
         # ----------------------------------------------------
         # plot
         # ----------------------------------------------------             
+        figname = 'figs/%s/coeff_%3.3d_%dTeV' %  (PDFset, index, SQRTS)
+        canvas = TCanvas(figname, figname, 10, 10, 1000, 800)
+        canvas.Divide(6,10)
+
+        figname = 'figs/%s/coeff_%3.3d_%dTeV_%s' %  (PDFset, index, SQRTS,
+                                                     COEFF)
+        cbi42 = TCanvas(figname, figname, 400, 200, 500, 500)
+
         lastname = ''
         for kk, (name, rootfile) in enumerate(filelist):
             if lastname in ['ai5',  'ai43', 'aij8',
@@ -141,6 +131,7 @@ def main():
             histnames = filter(lambda x: x[:3] == 'nlo',
                                hutil.histogramNames(hfile))
             canvas.cd(kk+1)
+            option = 'l'
             for histname in histnames:
                 h = hfile.Get(histname)
                 fixhist2(h)
@@ -151,11 +142,30 @@ def main():
                 h.Draw(option)
                 scribe.write(name)
                 hist.append(h)
+                option = 'l same'
             canvas.Update()
-            gSystem.ProcessEvents()
+
+            if name == COEFF:
+                cbi42.cd()
+                option = 'l'
+                for histname in histnames:
+                    h = hfile.Get(histname)
+                    fixhist2(h)
+                    tdir.cd()
+                    h = h.Clone('%s%d-bi42' % (histname, kk))
+                    h.SetLineColor(color)
+                    scribe = Scribe(0.6, 0.7, 0.04)
+                    h.Draw(option)
+                    scribe.write(name)
+                    scribe.write('#sqrt{s} = %dTeV' % SQRTS)
+                    scribe.write('PDF = %s, %d' % (PDFset, PDFmin))
+                    hist.append(h)
+                    option = 'l same'
+                cbi42.Update()
+            
             hfile.Close()
-            option = 'l same'
-    canvas.SaveAs('.png')
+        canvas.SaveAs('.png')
+        cbi42.SaveAs('.png')            
     sleep(10)       
 #-----------------------------------------------------------------------------
 try:
