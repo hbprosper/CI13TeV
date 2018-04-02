@@ -85,8 +85,6 @@ def decodeCommandLine():
             prefix = PDFsets[0]
         filename = '%s_%s_workspace.root' % (prefix, directory)
 
-    directory = '/%s' % directory
-        
     return (directory, PDFsets, filename,
             options.nmembers, options.bootstrap, options.smearing)
 #-----------------------------------------------------------------------------
@@ -104,13 +102,16 @@ def main():
     # -------------------------------------
     # determine which files to use
     # -------------------------------------
+    print "dirname", dirname
     if dirname == 'JEC':
         first = 0
         ndirs = 1
     else:
         first = 1
         ndirs+= 1
-      
+        
+    dirname = '/%s' % dirname
+    
     # -------------------------------------                
     # get list of histograms
     # -------------------------------------            
@@ -134,7 +135,8 @@ def main():
     # get list of QCD directories, each
     # associated with a different PDF
     # member
-    # -------------------------------------            
+    # -------------------------------------
+    print "ndirs", ndirs
     QCDdirs = []
     for pdfset in PDFsets:
         for member in xrange(first, ndirs):
