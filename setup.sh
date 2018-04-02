@@ -1,6 +1,5 @@
 export CIPATH=$PWD
 export PATH=$CIPATH/bin:$PATH
 export LD_LIBRARY_PATH=$CIPATH/CI/lib:$CIPATH/CI/src:$LD_LIBRARY_PATH
-export PYTHONPATH=$CIPATH/python:$PYTHONPATH
 export LHAPDF_DATA_PATH=$HOME/external/share/LHAPDF/PDFsets
 
