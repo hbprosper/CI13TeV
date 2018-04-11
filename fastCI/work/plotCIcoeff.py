@@ -56,9 +56,10 @@ def main():
 
     if argc > 1:
         PDFmin = atoi(argv[1])
+        PDFmax = PDFmin
     else:
         PDFmin = 0
-    PDFmax = PDFmin
+        PDFmax = 200
     
     if argc > 2:
         smearDir = '%s/' % argv[2]

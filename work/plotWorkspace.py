@@ -13,7 +13,6 @@ from time import sleep
 from ROOT import *
 #-----------------------------------------------------------------------------
 gSystem.Load("../CI/lib/libCI.so")
-#from ROOT import hutil
     
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
 YMIN    = 1.0e-8  # minimum and maximum y-limits for spectrum
