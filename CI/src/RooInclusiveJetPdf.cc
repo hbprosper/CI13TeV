@@ -184,7 +184,7 @@ void RooInclusiveJetPdf::initialize(int which)
   number = which;
   if ( number > (int)qcd.size()-1 ) number =-1;
   
-  int npts=100;
+  int npts=200;
   vector<double> x(npts+1);
   vector<double> y(npts+1);
   double xmin   = lambda.min();

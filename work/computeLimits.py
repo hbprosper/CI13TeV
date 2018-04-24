@@ -7,7 +7,8 @@
 #                          used to compute 7 TeV limits
 #              09-Jun-2014 HBP add check function
 #              15-Nov-2014 HBP use new pdf
-#              18-Sep-2016 HBP 
+#              18-Sep-2016 HBP
+#              18-May-2018 HBP permit model-dependent lambda range
 #-----------------------------------------------------------------
 import os,sys,re
 from array import array
@@ -17,12 +18,19 @@ from string import *
 from ROOT import *
 #-----------------------------------------------------------------
 EXPECTED = True    # if true compute expected limits
+
 ENERGY   = 13      # TeV
-LUMI     = 35100.0
-BINMIN   =  1      # corresponds to  737 -
-BINMAX   = 28      # corresponds to 1890-2000 GeV
+LUMI     = 35100.0 # 1/fb
+LUMI     =    72.0 # 1/fb  
+BINMIN   =  1      # first bin to use (ROOT bin number convention)
+BINMAX   = 28      # last bin to use
 LMIN     = 0.0     # lower limit of lambda = 1/Lambda^2
-LMAX     = 0.025   # upper limit of lambda
+LMAX     = {'LL': {1: 0.0015, -1: 0.004},
+            'RR': {1: 0.0015, -1: 0.004},
+            'VV': {1: 0.0015, -1: 0.004},
+            'AA': {1: 0.0015, -1: 0.004},
+            'V-A':{1: 0.0015, -1: 0.004}} # upper limit on lambda
+
 YMAX     = 0.060   # maximum Y limit of posterior density plot
 WSPACE   = 'CI'    # name of workspace
 
@@ -172,7 +180,6 @@ def main():
     model = ws.pdf('model')
     Nset  = ws.set('Nset')
     poi   = ws.var('lambda')
-    poi.setRange(LMIN, LMAX)
     data  = toVector(ws, 'Nset')
     nbins = model.numberOfBins()
 
@@ -184,7 +191,7 @@ def main():
         Asimov = model.Asimov()
         for ii in xrange(Asimov.size()):
             print "\t%4d\t%10.1f" % (ii+1, Asimov[ii])
-    sys.exit()
+
     # --------------------------------------
     # set range of bins to use.
     # NOTE: use ROOT bin labeling convention
@@ -199,23 +206,30 @@ def main():
     print "workspace:       %s" % WSPACE
     print "models:          %s" % models
     print "bin range:       [%d ... %d]" % (binmin, binmax)
-    print "lambda-range:    (%-6.3f ... %-6.3f) 1/TeV^2" % (LMIN, LMAX)
     print "integrated lumi: %8.2f / pb" % LUMI
     print "="*80
-    
+
     # --------------------------------------
     # create a graph of likelihood
     # --------------------------------------
-    
+
     # create wrapper for model
     pdf = PDFWrapper(model, Nset, poi)
     CL  = 0.95  # confidence level
 
     # loop over models for which limits are to be calculated
+    lmin = LMIN
     for key in models:
 
         for sign in [1, -1]:
+
+            lmax = LMAX[key][sign]
             
+            # set range depending on whether we have constructive or destructive
+            # interference
+            poi.setRange(lmin, lmax)
+            print "lambda-range:    (%-6.3f ... %-6.3f) 1/TeV^2" % (lmin, lmax)
+                
             # delete histograms to avoid memory leaks
             try:
                 del hnom
@@ -255,8 +269,7 @@ def main():
             # --------------------------------------
             # compute nominal limits
             # --------------------------------------
-            
-            model.initialize(-2) # use average cross section
+            model.initialize(0) # use nominal cross section
                       
             hnom, xmin, xmax, ymin, ymax = makePlot(ws, model, poi,
                                                     "hnom",
@@ -275,9 +288,8 @@ def main():
 
             # --------------------------------------
             # compute limits with systematic
-            # Uncertainties
+            # uncertainties
             # --------------------------------------
-
             model.initialize(-1) # integrate over systematic uncertainties
                         
             havg, xmin, xmax, ymin, ymax  = makePlot(ws, model, poi,
@@ -298,7 +310,7 @@ def main():
 
             # shade 95% region
             hclone = havg.Clone()
-            hclone.SetAxisRange(LMIN, limit2)
+            hclone.SetAxisRange(lmin, limit2)
             hclone.SetFillStyle(3001)
             hclone.SetFillColor(30)
             clike.cd()
@@ -322,7 +334,6 @@ def main():
             clike.SaveAs('.png')
             
         sleep(5)
-    #gApplication.Run()
 #----------------------------------------------------------------------
 try:
     main()
