@@ -16,7 +16,7 @@ gSystem.Load("../CI/lib/libCI.so")
     
 LHAPATH = os.environ['LHAPDF_DATA_PATH']
 YMIN    = 1.0e-8  # minimum and maximum y-limits for spectrum
-YMAX    = 2.0
+YMAX    = 4.0
 #                        kappa
 #                   1   2   3   4   5   6
 KAPPA   = {'LL' : [-1,  0,  0,  0,  0,  0],
@@ -64,7 +64,7 @@ def decodeCommandLine():
                       action='store',
                       dest='Lambda',
                       type='string',
-                      default='20',
+                      default='25',
                       help='CI mass scale')
 
     parser.add_option('-m', '--model',
@@ -279,8 +279,8 @@ def makePlot(context):
     #hqcdnom.Scale(scale)
     hratio = hdata.Clone('hratio')
     hratio.Divide(hqcdnom)
-    hratio.SetMinimum(0.0)
-    hratio.SetMaximum(3.0)
+    hratio.SetMinimum(YMIN)
+    hratio.SetMaximum(YMAX)
 
     title = 'data / QCD_{NLO}#otimesNP#otimesEWK'
     hratio.GetYaxis().SetTitle(title)
@@ -304,8 +304,8 @@ def makePlot(context):
     p50r = mkgraph(x, curve[2],
                    "Jet p_{T} (GeV)", title,
                    pTmin, pTmax,
-                   ymin=0,
-                   ymax=3,
+                   ymin=YMIN,
+                   ymax=YMAX,
                    color=kRed,
                    lwidth=1)
 
@@ -336,6 +336,8 @@ def makePlot(context):
     scriber.write(label, 0.04)
     scriber.write('data / theory = %3.2f' % scale, 0.04)
 
+    xp = 0.24
+    yp = 0.52
     lg = mklegend(xp, yp, xw, yw)
     lg.AddEntry(hratio, 'data', 'p')
     lg.AddEntry(qcdr, 'QCD', 'l')
