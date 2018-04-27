@@ -3,6 +3,7 @@
 # Run fast NLO
 # created 09-Oct-2012 Harrison B. Prosper
 #         15-Apr-2015 HBP - replace call to fnlo-cppread by fnlo-tk-cppread
+#         27-Apr-2018 HBP - adapt to slight fnlo format change
 #-----------------------------------------------------------------------------
 import os, sys, re
 from math import *
@@ -18,6 +19,8 @@ LHAPATH = os.environ['LHAPDF_DATA_PATH']
 
 getxsect = re.compile('The scale factor chosen here is:[.\s]+(?=\==)',
               re.M)
+
+MAXBIN   = 54  # corresponds to 4037 - 4252
 
 def main():
     print "\n\t<=== runfastNLO.py ===>"
@@ -80,7 +83,7 @@ def main():
         ii = 0
         while ii < len(records):
             record = strip(records[ii])
-            if record != "My Cross Sections":
+            if find(record, "My Cross Sections") < 0:
                 ii += 1
                 continue
             
@@ -94,7 +97,7 @@ def main():
                                          'LO-xsection', 'NLO-xsection')
             out.write('%s\n' % rec)
             ii += 3
-            for jj in xrange(54):
+            for jj in xrange(MAXBIN):
                 ii += 1
                 record = records[ii]
                 t = split(record)[-6:-1]

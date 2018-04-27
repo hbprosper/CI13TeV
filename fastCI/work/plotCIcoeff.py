@@ -46,11 +46,9 @@ def main():
     argv = sys.argv[1:]
     argc = len(argv)
     if argc < 1:
-        print '''
-    ./plotCIcoeff.py PDFset [PDFmember=0] [smearing-dir=none]
-        '''
-        sys.exit(0)
-
+        sys.exit('''
+    ./plotCIcoeff.py PDFset [PDFmember=all] [smearing-dir=none]
+        ''')
     PDFset = argv[0]
     os.system('mkdir -p figs/%s' % PDFset)
 
@@ -107,10 +105,8 @@ def main():
         canvas = TCanvas(figname, figname, 10, 10, 1000, 800)
         canvas.Divide(6,10)
 
-        figname = 'figs/%s/coeff_%3.3d_%dTeV_%s' %  (PDFset, index, SQRTS,
-                                                     COEFF)
-        cbi42 = TCanvas(figname, figname, 400, 200, 500, 500)
-
+        coeff = TCanvas('coeff', 'coeff', 1100, 10, 500, 500)
+        
         lastname = ''
         for kk, (name, rootfile) in enumerate(filelist):
             if lastname in ['ai5',  'ai43', 'aij8',
@@ -146,28 +142,32 @@ def main():
                 option = 'l same'
             canvas.Update()
 
-            if name == COEFF:
-                cbi42.cd()
-                option = 'l'
-                for histname in histnames:
-                    h = hfile.Get(histname)
-                    fixhist2(h)
-                    tdir.cd()
-                    h = h.Clone('%s%d-bi42' % (histname, kk))
-                    h.SetLineColor(color)
-                    scribe = Scribe(0.6, 0.7, 0.04)
-                    h.Draw(option)
-                    scribe.write(name)
-                    scribe.write('#sqrt{s} = %dTeV' % SQRTS)
-                    scribe.write('PDF = %s, %d' % (PDFset, PDFmin))
-                    hist.append(h)
-                    option = 'l same'
-                cbi42.Update()
+            coeff.cd()
+            option = 'l'
+            for histname in histnames:
+                h = hfile.Get(histname)
+                fixhist2(h)
+                tdir.cd()
+                h = h.Clone('%s%d-bi42' % (histname, kk))
+                h.SetLineColor(color)
+                scribe = Scribe(0.6, 0.7, 0.04)
+                h.Draw(option)
+                scribe.write(name)
+                scribe.write('#sqrt{s} = %dTeV' % SQRTS)
+                scribe.write('PDF = %s, %d' % (PDFset, PDFmin))
+                hist.append(h)
+                option = 'l same'
+            coeff.Update()
+            gSystem.ProcessEvents()
             
+            figname = 'figs/%s/coeff_%3.3d_%dTeV_%s.png' %  (PDFset, index,
+                                                             SQRTS, name)
+            coeff.SaveAs(figname)
+            sleep(1)
             hfile.Close()
         canvas.SaveAs('.png')
-        cbi42.SaveAs('.png')            
-    sleep(10)       
+          
+    sleep(2)       
 #-----------------------------------------------------------------------------
 try:
     main()
