@@ -90,7 +90,7 @@ else
 endif
 
 #	Linker flags
-LDFLAGS := -g $(root-config --ldflags)
+LDFLAGS := -g $(root-config --ldflags) -Wl,-rpath,$(ROOTSYS)/lib
 
 # 	Libraries
 

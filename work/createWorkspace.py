@@ -6,6 +6,7 @@
 #                     spectrum computed with PDF member zero
 #         16-May-2016 HBP - update to use random sampling implemented and
 #                     tested by Roberto
+#         30-Apr-2018 HBP - limit number of spectra to MAXSPECTRA
 #-----------------------------------------------------------------------------
 import os, sys, re, optparse, histutil
 from math import *
@@ -17,17 +18,24 @@ from random import shuffle, randint
 from ROOT import gSystem, TFile, kFALSE, kTRUE, \
      RooWorkspace, RooMsgService, RooFit, RooDataSet, RooCmdArg, vector
 #-----------------------------------------------------------------------------
-LHAPATH = os.environ['LHAPDF_DATA_PATH']
-CIPATH  = os.environ['CIPATH']
-YMIN    = 1.0e-8  # minimum and maximum y-limits for spectrum
+try:
+    LHAPATH = os.environ['LHAPDF_DATA_PATH']
+except:
+    sys.exit('** please do source setup.sh in order to define LHAPDF_DATA_PATH')
+try:
+    CIPATH  = os.environ['CIPATH']
+except:
+    sys.exit('** please do source setup.sh in order to define CIPATH')    
+
+YMIN    = 1.0e-8   # minimum and maximum y-limits for spectrum
 YMAX    = 2.0
 LUMI    = 35100.0  # 1/pb
 DATAFILE= '../data/data_13TeV_L035.1ifb.root'
-PDFDIR  = 'CT14'
-NMEMBERS= 200 # number of PDF members/PDF set to use
+NMEMBERS= 200      # number of PDF members/PDF set to use
+MAXSPECTRA = 1000  # maximum number of spectra
 #-----------------------------------------------------------------------------
 def decodeCommandLine():
-    VERSION = '17-Sep-2016'
+    VERSION = '30-Apr-2018'
     USAGE = '''
     python createWorkspace.py [options] [PDF=CT14 NNPDF MMHT]
 
@@ -71,7 +79,7 @@ def decodeCommandLine():
                                       
     options, PDFsets = parser.parse_args()
     if len(PDFsets) == 0:
-        PDFsets = ['CT14', 'MMHT', 'NNPDF']
+        PDFsets = ['CT14']
 
     # create directory name to contain smeared spectra
     directory = upper(options.smearing)
@@ -80,7 +88,7 @@ def decodeCommandLine():
     filename = options.filename
     if filename == '':
         if len(PDFsets) > 1:
-            prefix = 'ALL'
+            prefix = joinfields(PDFsets, '_')
         else:
             prefix = PDFsets[0]
         filename = '%s_%s_workspace.root' % (prefix, directory)
@@ -94,11 +102,15 @@ def main():
     # number of PDF members = number of subdirectories under each PDF
     # directory
     dirname, PDFsets, wfilename, ndirs, bootstrap, smearing=decodeCommandLine()
+    PDFset = PDFsets[0]
     
-    gSystem.Load("libCI")
-    from ROOT import hutil, QCDSpectrum, CIXsection, CISpectrum, \
-     RooInclusiveJetPdf
-    
+    try:
+        gSystem.Load("$CIPATH/CI/lib/libCI")
+        from ROOT import hutil, \
+     QCDSpectrum, CIXsection, CISpectrum, RooInclusiveJetPdf
+    except:
+        sys.exit('\n\t** problem loading library. please re-compile CI or check path **\n')
+        
     # -------------------------------------
     # determine which files to use
     # -------------------------------------
@@ -115,7 +127,7 @@ def main():
     # -------------------------------------                
     # get list of histograms
     # -------------------------------------            
-    rootfile = '../fastNLO/%s/000%s/qcd.root' % (PDFDIR, dirname)
+    rootfile = '../fastNLO/%s/000%s/qcd.root' % (PDFset, dirname)
     if not os.path.exists(rootfile):
         hutil.error("createWorkspace.py",
                     "can't find rootfile %s" % rootfile)
@@ -157,7 +169,7 @@ def main():
     # -------------------------------------
 
     nspectra = len(QCDdirs)*len(histnames)
-    spectra = [None]*nspectra
+    spectra  = [None]*nspectra
 
     if bootstrap:
         for jj in xrange(nspectra):
@@ -178,10 +190,17 @@ def main():
             for histname in histnames:
                 spectra[jj] = (qcddir, histname)
                 jj += 1
-                
-    # insert nominal QCD histogram for CT14 with nominal
+
+    # -------------------------------------                
+    # shuffle spectra
+    # -------------------------------------    
+    shuffle(spectra)
+    maxspectra = min(MAXSPECTRA, len(spectra))
+    spectra    = spectra[:maxspectra]
+    
+    # insert nominal QCD histogram with nominal
     # scales at position 0 in list of spectra
-    qcddir = '../fastNLO/%s/000%s' % (PDFDIR, dirname)
+    qcddir = '../fastNLO/%s/000%s' % (PDFset, dirname)
     fqcdnom = glob(qcddir)
     if len(fqcdnom) == 1:
         fqcdnom = fqcdnom[0]

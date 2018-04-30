@@ -21,7 +21,6 @@ EXPECTED = True    # if true compute expected limits
 
 ENERGY   = 13      # TeV
 LUMI     = 35100.0 # 1/fb
-LUMI     =    72.0 # 1/fb  
 BINMIN   =  1      # first bin to use (ROOT bin number convention)
 BINMAX   = 28      # last bin to use
 LMIN     = 0.0     # lower limit of lambda = 1/Lambda^2
