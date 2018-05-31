@@ -54,8 +54,14 @@ class PDFunction
       overridden by derived classes. 
       See for example, MarginalizedPoissonGamma
   */
-  virtual double operator() (std::vector<double>& data, double theta)=0; 
+  virtual double operator() (double theta)=0;
 
+  /**
+  */
+  virtual void setData(std::vector<double>& _data)=0;
+
+  virtual double logLikelihood(double /** theta */) { return 0; }
+  
  private:
   ClassDef(PDFunction,1)
 };

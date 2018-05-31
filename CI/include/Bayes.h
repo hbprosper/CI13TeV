@@ -27,15 +27,13 @@ public:
   Bayes () {}
 
   /** Non RooFit constructor. 
-      @param model  - pdf
-      @param data   - observed data
+      @param model  - likelihood
       @param poimin - minimum of parameter of interest
       @param poimax - maximum of parameter of interest
       @param cl     - confidence level
       @param prior  - prior funtion (default = flat)
   */
   Bayes(PDFunction& model,
-	std::vector<double>& data,
 	double poimin,
 	double poimax,
 	double cl=0.95,
@@ -54,6 +52,15 @@ public:
 
   virtual ~Bayes();
 
+  ///
+  void reset() { normalize(); }
+  
+  /// Compute a percentile of the posterior density.
+  double percentile(double p=-1);
+
+  /// Compute estimate (take it to be the mode of posterior density).
+  std::pair<double, double> estimate(double guess=0);
+  
   /** Compute prior.
    */  
   double prior(double poi);
@@ -72,18 +79,14 @@ public:
 
   /// Compute cdf of posterior density.
   double cdf(double poi);
-
-  /// Compute p-quantile of posterior density.
-  double quantile(double p=-1);
-
-  /// Compute MAximum Posterior estimate (mode of posterior density).
-  void MAP(double CL, std::vector<double>& results);
-  
-  void setData(std::vector<double>& d) { _data = d; normalize(); }
   
   std::vector<double>& data() {return _data;}
 
   double CL() { return _cl; }
+
+  /**
+  */
+  virtual void setData(std::vector<double>& _data);  
 
 private:
   PDFunction*    _pdf;
@@ -107,6 +110,7 @@ private:
   double _f(double prob);
   double _nsig;
   double _postmax;
+  int    _verbosity;
 };
 
 #endif

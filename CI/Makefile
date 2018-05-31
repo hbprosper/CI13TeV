@@ -33,6 +33,7 @@ srcs	:= 	$(srcdir)/JECUncertainty.cc \
 		$(srcdir)/JetSpectrumSmeared.cc \
 		$(srcdir)/hutil.cc \
 		$(srcdir)/Bayes.cc \
+		$(srcdir)/Wald.cc \
 		$(srcdir)/PDFWrapper.cc \
 		$(srcdir)/PDFunction.cc \
 		$(srcdir)/RooMultinomial.cc \

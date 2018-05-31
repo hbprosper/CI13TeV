@@ -17,6 +17,19 @@ _2.000_2.000
 HISTNAMES = split(strip(HISTNAMES))
 MURMUF = [0, 3, 1, 4, 7, 5, 8]
 #-------------------------------------------------------------------------------
+def getBins(filename='bins.txt'):
+    from array import array
+    filename = '../../data/%s' % filename   
+    records  = map(lambda x: map(atof, x),
+                   map(split, open(filename).readlines()))
+    pt = array('d')
+    for ptlow, pthigh in records:
+        pt.append(ptlow)
+    ptlow, pthigh = records[-1]
+    pt.append(pthigh)
+    print "\t==> pT-range = (%-6.1f ... %-6.1f) GeV" % (pt[0], pt[-1])
+    return pt
+
 def xsection(cixsec, l, kappa, which=1):
     bi  = vector('double')(6)
     ai  = vector('double')(6)
@@ -59,13 +72,13 @@ def xsection(cixsec, l, kappa, which=1):
 def main():
     gSystem.Load('libCI.so')
     
-    Lambda = 10.0
+    Lambda = 30.0
     l = 1.0/Lambda**2
     kappa = vector('double')(6, 0)
     kappa[0] =-1
 
     histdir = '../CT14/000'
-    bins    = [507, 548, 592, 638, 686, 737]
+    bins    = getBins()[24:-2]
     cifnames= []
     xsec = {}
     for b in bins:
@@ -153,7 +166,8 @@ def main():
             out.write('%s\n' % record)
             print record
     out.close()
-
+    os.system('rm -f xsec*.txt')
+    
     swatch = TStopwatch()
     N = 10000
     CI = cinlo[0]

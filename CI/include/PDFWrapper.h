@@ -48,13 +48,13 @@ class PDFWrapper : public PDFunction
   std::vector<double>& generate(double poi);
   
   /** Computes PDF.
-      @param data - observed data (could be binned)
       @param poi  - parameter of interest 
   */
-  double operator() (std::vector<double>& data_, double poi);
-  virtual double getVal() {return _pdf->getVal(); }
+  double operator() (double poi);
   virtual RooRealVar* getPoi() {return _poi;}
   virtual std::string GetTitle() {return _pdf->GetTitle(); }
+
+  void setData(std::vector<double>& data);
 
  private:
 

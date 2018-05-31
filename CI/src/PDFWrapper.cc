@@ -27,7 +27,6 @@ PDFWrapper::PDFWrapper(RooAbsPdf& pdf, RooArgSet& obs, RooRealVar& poi)
     _pdf(&pdf),
     _obs(&obs),
     _poi(&poi),
-    _list(RooArgList(obs)),
     _data(vector<double>(_obs->getSize()))
 {}
 
@@ -36,7 +35,6 @@ PDFWrapper::PDFWrapper(const PDFWrapper& other)
     _pdf(other._pdf),
     _obs(other._obs),
     _poi(other._poi),
-    _list(other._list),
     _data(other._data)
 {}
 
@@ -49,26 +47,30 @@ PDFWrapper::generate(double poi)
   _poi->setVal(poi);
   const RooArgSet* row = _pdf->generate(*_obs, 1)->get();
   RooArgList d(*row);
-  for(unsigned int i=0; i < _data.size(); i++) _data[i] = dynamic_cast<RooRealVar*>(&d[i])->getVal();
+  for(unsigned int i=0; i < _data.size(); i++)
+    _data[i] = dynamic_cast<RooRealVar*>(&d[i])->getVal();
   delete row;
   return _data;
 }
 
+void 
+PDFWrapper::setData(std::vector<double>& data)
+{
+  RooArgList list(*_obs);
+  for(size_t c=0; c < list.getSize(); c++)
+  {
+    _data[c] = data[c];
+    RooAbsArg* arg = list.at(c);
+    (dynamic_cast<RooRealVar*>(arg))->setVal(_data[c]);
+  }
+}
+
 double 
-PDFWrapper::operator() (std::vector<double>& data, double poi)
+PDFWrapper::operator() (double poi)
 {
   _poi->setVal(poi);
-  if ( (int)data.size() == 0 ) return _pdf->getVal();
-
-  if ( (int)data.size() != (int)_data.size() ) return -2;
-  
-  for(unsigned int i=0; i < data.size(); i++)
-    {
-      _data[i] = data[i];
-      RooRealVar* v = (RooRealVar*)(&_list[i]);
-      v->setVal(_data[i]);
-    }
-  return _pdf->getVal();
+  double p =  _pdf->getVal();
+  return p;
 }
 
 

@@ -88,7 +88,7 @@ def decodeCommandLine():
     filename = options.filename
     if filename == '':
         if len(PDFsets) > 1:
-            prefix = joinfields(PDFsets, '_')
+            prefix = joinfields(PDFsets)
         else:
             prefix = PDFsets[0]
         filename = '%s_%s_workspace.root' % (prefix, directory)
@@ -225,9 +225,9 @@ def main():
     # sources are in src
     # --------------------------------------
     print "==> create workspace..."
-    RooWorkspace.autoImportClassCode(kTRUE)
-    RooWorkspace.addClassDeclImportDir('../CI')
-    RooWorkspace.addClassImplImportDir('../CI')
+    #RooWorkspace.autoImportClassCode(kTRUE)
+    #RooWorkspace.addClassDeclImportDir('../CI')
+    #RooWorkspace.addClassImplImportDir('../CI')
     
     ws = RooWorkspace("CI")
 
@@ -266,7 +266,7 @@ def main():
     
     getattr(ws, 'import')(hdata, 'hdata')
 
-    # cretae a RooFit parameter for each count
+    # create a RooFit parameter for each count
     record = [] 
     for ii in xrange(nbins):
         c = hdata.GetBinContent(ii+1)
@@ -347,14 +347,6 @@ def main():
     print "==> writing workspace to file: %s" % wfilename
     hfile.Close()
     ws.writeToFile(wfilename, kFALSE)
-
-
-    # check calculation of Asimov dataset
-    model.setAsimov(True, LUMI)
-    print "\n\t== Use Asimov data set (Lumi = %10.1f / pb)" % LUMI
-    Asimov = model.Asimov()
-    for ii in xrange(Asimov.size()):
-        print "\t%4d\t%10.1f" % (ii+1, Asimov[ii])
          
     print "\tdone!\n"    
 #-----------------------------------------------------------------------------

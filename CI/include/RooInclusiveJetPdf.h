@@ -11,6 +11,7 @@
 //---------------------------------------------------------------------------
 #include "RooAbsPdf.h"
 #include "RooAbsReal.h"
+#include "RooRealVar.h"
 #include "RooRealProxy.h"
 #include "RooListProxy.h"
 #include "QCDSpectrum.h"
@@ -49,25 +50,30 @@ public:
   void initialize(int which=-1);
 
   ///
-  void bootstrap(bool yes=true);
+  void bootstrap(bool yes=true, int number=500);
 
   /// Set bin range (with first bin number = 1 as in Root convention).
   void setBinRange(int first=-1, int last=-1);
 
   ///
-  void setAsimov(bool yes=true, double lumi=35100, double l=0,
-		 bool use_average=false);
-
+  void setAsimov(bool yes=true,
+		 bool fluctuate=false,
+		 double lumi=35100,
+		 double lam=0,
+		 bool use_average=true);
+  
   size_t size() { return qcd.size(); }  
   int    numberOfBins() { return count.getSize(); }
   
   std::vector<double>& Asimov() { return asimov; }
   std::vector<double>& crossSection(int n);
   std::vector<double>& qcdXsection() { return qcdxsect; }
+
+  static double logMultinomial(std::vector<double>& n, std::vector<double>& p);
   
-  static long double multinomial(std::vector<double>& n,
-				 std::vector<double>& p);
-		    
+  double logProfileLikelihood(double poi);
+  double underflowFraction() { return ufraction; }
+  
  protected:
   double evaluate() const;
 
@@ -76,7 +82,6 @@ public:
   RooListProxy kappa;
 
  private:
-
   std::vector<QCDSpectrum> qcd;
   std::vector<CISpectrum>  ci;
   std::vector<int>         index;
@@ -87,11 +92,12 @@ public:
   std::vector<double> asimov;
   std::vector<double> qcdxsect;
   std::vector<double> xsection;
-
+  double ufraction;
   int firstbin;
   int lastbin;
   bool useinterpolation;
   bool usebootstrap;
+  bool useprofile;
   
   mutable ROOT::Math::Interpolator* interp;
   

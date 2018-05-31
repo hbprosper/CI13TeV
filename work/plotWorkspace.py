@@ -55,7 +55,7 @@ def decodeCommandLine():
     options
        -m<model>      LL, RR, VV, AA, V-A, QCD     [ALL]
        -L<Lambda>                                  [20 (TeV)]
-       -r<reference>  median, nominal (QCD)        [nominal]
+       -r<reference>  median, nominal (QCD)        [median]
     '''
     parser = optparse.OptionParser(usage=USAGE,
                                    version=VERSION)
@@ -73,6 +73,12 @@ def decodeCommandLine():
                       type='string',
                       default='QCD LL RR VV AA V-A',
                       help='model')
+
+    parser.add_option('-s', '--scale',
+                      action='store_true',
+                      dest='scale',
+                      default=False,
+                      help='normalize median spectrum to data')    
         
     options, args = parser.parse_args()
     if len(args) == 0:
@@ -98,7 +104,7 @@ def decodeCommandLine():
         for ii in xrange(kappa.size()):
             kappa[ii] = sign*KAPPA[key][ii]
 
-    return (filename, Lambda, kappa, model, interf)    
+    return (filename, Lambda, kappa, model, interf, options.scale)    
 #-----------------------------------------------------------------------------
 def makePlot(context):
     model    = context.model
@@ -107,7 +113,7 @@ def makePlot(context):
     interf   = context.interf
     hdata    = context.hdata
     pT       = context.pT
-    
+    scaleToData   = context.scaleToData
     qcdspectrum = context.qcdspectrum
     cispectrum  = context.cispectrum
     
@@ -150,7 +156,39 @@ def makePlot(context):
         postfix += '_%s_%3.1f_%s' % (model, Lambda, interf[0])
     else:
         postfix += '_QCD'
+
+    # --------------------------------------------------------
+    # get reference QCD spectrum
+    # --------------------------------------------------------    
+    pc = PercentileCurve(nbins)
+    for index, QCD in enumerate(qcdspectrum[1:]):
+        hqcd = QCD()
+        hutil.divideByWidth(hqcd) # convert to a density
+        pc.add(hqcd)
+
+    hqcdnom = qcdspectrum[0]()
+    hqcdnom.SetLineColor(kBlue)                
+    hutil.divideByWidth(hqcdnom) # convert to a density
     
+    if scaleToData:
+        print "scale median prediction to data"
+        c50 = pc(0.50)
+        hqcdref = hdata.Clone('hqcdref')
+        for ii in range(len(c50)):
+            hqcdref.SetBinContent(ii+1, c50[ii])
+            hqcdref.SetBinError(ii+1, 0)
+    else:
+        hqcdref = hqcdnom.Clone('hqcdref')
+
+    xdata = hdata.Integral()
+    xsect = hqcdref.Integral()
+    scale = xdata / xsect
+    print "\n==> data/theory: %10.2f\n" % scale
+    hqcdnom.Scale(scale)
+
+    # --------------------------------------------------------
+    # compute percentile spectra and scale to data
+    # --------------------------------------------------------    
     pcQCD   = PercentileCurve(nbins)
     pcQCDCI = PercentileCurve(nbins)
     
@@ -159,6 +197,7 @@ def makePlot(context):
     
     for index, QCD in enumerate(qcdspectrum[1:]):
         hqcd = QCD()
+        hqcd.Scale(scale)
         hutil.divideByWidth(hqcd) # convert to a density
         pcQCD.add(hqcd)
         hQCD.append(hqcd)
@@ -166,6 +205,7 @@ def makePlot(context):
         if addCI:
             CI  = cispectrum[index]
             hci = CI(lam, kappa)
+            hci.Scale(scale)            
             hutil.divideByWidth(hci) # convert to a density
             
             hci.Add(hqcd)
@@ -176,14 +216,17 @@ def makePlot(context):
             print "%5d" % index, hqcd.GetName()
     
     # --------------------------------------------------------
-    # plot spectrum
+    # plot spectra
     # --------------------------------------------------------
     os.system('mkdir -p figures/%s' % dirname)
     
-    name = 'figures/%s/%s_xsection%s' % (dirname, prefix, postfix)
+    fname = 'figures/%s/%s_xsection%s' % (dirname, prefix, postfix)
+    if scaleToData:
+        fname = fname + '_scaled'
+        
     print
-    print name
-    cspect = TCanvas(name, name, 10, 10, 500, 500)
+    print fname
+    cspect = TCanvas(fname, fname, 10, 10, 500, 500)
     x = map(lambda i: (pT[i+1]+pT[i])/2, range(nbins))
 
     # decide what spectrum is to be plotted
@@ -194,27 +237,17 @@ def makePlot(context):
         pc   = pcQCD
         hist = hQCD
         
-    # get reference QCD curve.
-    hqcdnom = qcdspectrum[0]()
-    hutil.divideByWidth(hqcdnom) # convert to a density
-    hqcdnom.SetLineColor(kBlue)            
-
     print
     n = hdata.GetNbinsX()
     print "data: bins %d, pT-range = (%-6.1f ... %-6.1f) GeV" % \
       (n, hdata.GetBinLowEdge(1), hdata.GetBinLowEdge(n)+hdata.GetBinWidth(n))
     
-    n = hqcdnom.GetNbinsX()
-    print "QCD0: bins %d, pT-range = (%-6.1f ... %-6.1f) GeV" % \
-      (n, hqcdnom.GetBinLowEdge(1),
-       hqcdnom.GetBinLowEdge(n)+hqcdnom.GetBinWidth(n))
+    n = hqcdref.GetNbinsX()
+    print "QCD(reference): bins %d, pT-range = (%-6.1f ... %-6.1f) GeV" % \
+      (n, hqcdref.GetBinLowEdge(1),
+       hqcdref.GetBinLowEdge(n)+hqcdref.GetBinWidth(n))
        
-    xdata = hdata.Integral()
-    xsect = hqcdnom.Integral()
-    scale = xdata / xsect
-    print "\n==> data/theory: %10.2f\n" % scale
 
-    # compute percentile spectra
     curve = []
     for p in PERCENT: curve.append( pc(p) )
     p95 = mkpline(x, curve[0], curve[-1], hdata, cspect, color=kGreen)
@@ -228,7 +261,7 @@ def makePlot(context):
                   color=kRed,
                   lwidth=1)
     p50.SetLineWidth(2)
-    h50 = p50.GetHistogram()
+    #h50 = p50.GetHistogram()
     
     cspect.cd()
     gPad.SetLogy()
@@ -258,7 +291,7 @@ def makePlot(context):
     yw = 0.24
     lg = mklegend(xp, yp, xw, yw)
     lg.AddEntry(hdata, 'data', 'p')
-    lg.AddEntry(hqcdnom, 'QCD', 'l')
+    #lg.AddEntry(hqcdnom, 'QCD', 'l')
     lg.AddEntry(p50, 'median', 'l')
     lg.AddEntry(p68, '68%s' % '%', 'f')
     lg.AddEntry(p95, '95%s' % '%', 'f')
@@ -271,12 +304,10 @@ def makePlot(context):
     # --------------------------------------------------------
     # now plot the ratio
     # --------------------------------------------------------
-    cratio = TCanvas('figures/%s/%s_xsection%s_ratio' % (dirname,
-                                                         prefix, postfix),
+    cratio = TCanvas('%s_ratio' % fname,
                      '%s - xsection-ratio' % dirname,
                      515, 10, 500, 500)
 
-    #hqcdnom.Scale(scale)
     hratio = hdata.Clone('hratio')
     hratio.Divide(hqcdnom)
     hratio.SetMinimum(YMIN)
@@ -296,7 +327,11 @@ def makePlot(context):
     for ii, h in enumerate(hist):
         h.Divide(hqcdnom)
         pc.add(h)
-
+    hqcdnomr = hqcdnom.Clone('hqcdnomr')
+    hqcdnomr.Divide(hqcdnom)
+    hqcdnomr.SetLineWidth(2)
+    hqcdnomr.SetLineColor(kBlue)
+            
     curve = []
     for p in PERCENT: curve.append( pc(p) )
     p95r = mkpline(x, curve[0], curve[-1], hratio, cratio, color=kGreen)
@@ -307,21 +342,16 @@ def makePlot(context):
                    ymin=YMIN,
                    ymax=YMAX,
                    color=kRed,
-                   lwidth=1)
+                   lwidth=3)
 
-    xx = array('d'); xx.append(pTmin); xx.append(pTmax)
-    yy = array('d'); yy.append(1); yy.append(1)
-    qcdr = TGraph(2, xx, yy)
-    qcdr.SetLineWidth(2)
-    qcdr.SetLineColor(kBlue)
-        
+
     cratio.cd()
     gPad.SetLogy(kFALSE)
     hratio.Draw("ep")
     p95r.Draw('f same')
     p68r.Draw('f same')
     p50r.Draw('c same')
-    qcdr.Draw('c same')
+    hqcdnomr.Draw('c same')
     hratio.Draw("ep same")
     
     scriber = addTitle('CMS Preliminary  #surds=%sTeV L=%s/fb' % \
@@ -334,13 +364,13 @@ def makePlot(context):
                                                     interf), 0.04)
     scriber.write(PDFS[dirname], 0.04)
     scriber.write(label, 0.04)
-    scriber.write('data / theory = %3.2f' % scale, 0.04)
+    scriber.write('data/theory = %3.2f' % scale, 0.24)
 
     xp = 0.24
     yp = 0.52
     lg = mklegend(xp, yp, xw, yw)
     lg.AddEntry(hratio, 'data', 'p')
-    lg.AddEntry(qcdr, 'QCD', 'l')
+    #lg.AddEntry(hqcdnomr, 'QCD', 'l')
     lg.AddEntry(p50r, 'median', 'l')
     lg.AddEntry(p68r, '68%s' % '%', 'f')
     lg.AddEntry(p95r, '95%s' % '%', 'f')
@@ -355,16 +385,17 @@ def main():
     print "\n\t<=== plotWorkspace.py ===>"
     setStyle()
 
-    filename, Lambda, kappa, model, interf = decodeCommandLine()
-
+    filename, Lambda, kappa, model, interf, scaleToData = decodeCommandLine()
+    
     context = Context()
-    context.filename = filename
-    context.Lambda = Lambda
-    context.kappa  = kappa
-    context.energy = '13'
+    context.filename = replace(filename, '_workspace', '')
+    context.Lambda   = Lambda
+    context.kappa    = kappa
+    context.energy   = '13'
     lumi = LUMI/1000
-    context.lumi   = '%5.2f' % lumi
-        
+    context.lumi     = '%5.2f' % lumi
+    context.scaleToData= scaleToData
+    
     # --------------------------------------------------------        
     print "\nloading workspace..."
     # --------------------------------------------------------    
@@ -380,7 +411,7 @@ def main():
     # --------------------------------------------------------
     hdata = ws.obj('hdata')
     check(hdata, "can't get hdata")
-    nbins   = hdata.GetNbinsX()
+    nbins = hdata.GetNbinsX()
     hdata.GetXaxis().SetTitle('Jet p_{T} (GeV)')
     hdata.GetYaxis().SetTitle('d^{2}#sigma /dp_{T}dy (pb/GeV)')
     hdata.SetMarkerSize(0.8)
@@ -390,10 +421,14 @@ def main():
 
     ymin = hdata.SetMinimum(YMIN)
     ymax = hdata.SetMaximum(YMAX)
-    
-    pT = hutil.binlowedges(hdata)
-    pT.push_back(pT[-1]+hdata.GetBinWidth(nbins))
 
+    # get bin boundaries
+    pt = hutil.binlowedges(hdata)
+    pt.push_back(pt[-1]+hdata.GetBinWidth(nbins))
+    pT = array('d')
+    for i in range(len(pt)): pT.append(pt[i])
+    context.pT = pT
+    
     # --------------------------------------------------------      
     # get model
     # --------------------------------------------------------    
@@ -417,9 +452,8 @@ def main():
     # --------------------------------------------------------
     # now plot
     # --------------------------------------------------------
-    context.hdata = hdata
-    context.interf= ''    
-    context.pT = pT
+    context.hdata  = hdata
+    context.interf = ''
     context.qcdspectrum = qcdspectrum
     context.cispectrum  = cispectrum
 
