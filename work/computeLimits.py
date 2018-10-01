@@ -59,7 +59,8 @@ def decodeCommandLine():
     USAGE = '''
     python computeLimits.py [options] <workspace-file> [LL RR etc.]
 
-    options 
+    options
+       -f              first bin to use (default 1) 
        -O              compute observed limit [default compute expected limit]
 
     options for expected limit
@@ -97,7 +98,14 @@ def decodeCommandLine():
                       dest='ntrials',
                       default=-1,
                       help='number of trials for computing expected limits')       
-        
+
+    parser.add_option('-f', '--firstbin',
+                      action="store",
+                      type='int',
+                      dest='firstbin',
+                      default=1,
+                      help='first bin to use')       
+            
     options, args = parser.parse_args()
     if len(args) == 0: sys.exit(USAGE)
     filename = args[0]
@@ -106,7 +114,7 @@ def decodeCommandLine():
     
     return (filename, not options.observed,
                 options.Lambda, 1e3*options.lumi, models,
-                options.ntrials)
+                options.ntrials, options.firstbin)
 #-----------------------------------------------------------------
 #-----------------------------------------------------------------
 def optimizeRange(model, poi, nstep=20):
@@ -339,7 +347,8 @@ def toVector(ws, setname):
 #-----------------------------------------------------------------
 def main():
 
-    filename, expected, Lambda, luminosity, models, ntrials = decodeCommandLine()
+    filename, expected, Lambda, luminosity, models, ntrials, firstbin = decodeCommandLine()
+    BINMIN = firstbin
     
     # --------------------------------------
     # load various codes needed for the

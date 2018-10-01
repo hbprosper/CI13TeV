@@ -60,7 +60,7 @@ public:
 		 bool fluctuate=false,
 		 double lumi=35100,
 		 double lam=0,
-		 bool use_average=true);
+		 bool use_average=false);
   
   size_t size() { return qcd.size(); }  
   int    numberOfBins() { return count.getSize(); }
