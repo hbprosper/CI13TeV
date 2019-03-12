@@ -52,9 +52,10 @@ private:
   std::vector<double> xsection;
   ROOT::Math::Interpolator* interp;
   bool _positive;
-  bool nullHist;
   TH1*  hNPC;
   TH1*  hEWKC;
+  bool nullHist;
+
 };
 
 #endif

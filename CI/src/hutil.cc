@@ -16,7 +16,9 @@ vector<double> hutil::contents(TH1* hist)
 {
   vector<double> c(hist->GetNbinsX());
   for(int i=0; i < hist->GetNbinsX(); i++)
+    {
       c[i] = hist->GetBinContent(i+1);
+    }
   return c;
 }
 
@@ -24,8 +26,10 @@ vector<double> hutil::binlowedges(TH1* hist)
 {
   vector<double> c(hist->GetNbinsX());
   for(int i=0; i < hist->GetNbinsX(); i++)
-    c[i] = hist->GetBinLowEdge(i+1);
-    return c;
+    {
+      c[i] = hist->GetBinLowEdge(i+1);
+    }
+  return c;
 }
 
 vector<double> hutil::binhighedges(TH1* hist)

@@ -41,8 +41,22 @@ class JetSpectrumSmeared
 
   ~JetSpectrumSmeared()
     {
-      if (f1) delete f1; if (Intf1) delete Intf1;
-      if (f2) delete f2; if (Intf2) delete Intf2;
+      if (f1)
+	{
+	  delete f1;
+	}
+      if (Intf1)
+	{
+	  delete Intf1;
+	}
+      if (f2)
+	{
+	  delete f2;
+	}
+      if (Intf2)
+	{
+	  delete Intf2;
+	}
     }
   
   double operator()(double pT);

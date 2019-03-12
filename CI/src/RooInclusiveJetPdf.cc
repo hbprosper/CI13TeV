@@ -153,7 +153,7 @@ void RooInclusiveJetPdf::bootstrap(bool yes, int number)
   if ( usebootstrap )
     {
       index.resize(number);
-      for (size_t c=0; c < number; c++)
+      for (size_t c=0; c < (size_t)number; c++)
 	index[c] = rand3.Integer(qcd.size()-1);
     }
   else

@@ -57,7 +57,7 @@ void
 PDFWrapper::setData(std::vector<double>& data)
 {
   RooArgList list(*_obs);
-  for(size_t c=0; c < list.getSize(); c++)
+  for(size_t c=0; c < (size_t)list.getSize(); c++)
   {
     _data[c] = data[c];
     RooAbsArg* arg = list.at(c);
